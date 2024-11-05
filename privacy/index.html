@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Bhagavad Gita App</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Redirect to the desired URL if accessed with a trailing slash
+        if (window.location.pathname.endsWith('/')) {
+            window.location.replace(window.location.pathname.slice(0, -1));
+        }
+    </script>
 </head>
 <body>
     <div class="container">
