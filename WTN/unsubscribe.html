@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -72,6 +72,115 @@
 
         // Call the unsubscribe function on page load
         window.onload = unsubscribeUser;
+    </script>
+</body>
+</html>
+ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .message-container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #333333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666666;
+            margin-bottom: 20px;
+        }
+        .checkbox-container {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .checkbox-container label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333333;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="message-container">
+        <h1>Unsubscribe</h1>
+        <p>We're sorry to see you go. Please let us know why you're unsubscribing:</p>
+        <div class="checkbox-container">
+            <label><input type="checkbox" name="reason" value="Too many emails"> Too many emails</label>
+            <label><input type="checkbox" name="reason" value="Content not relevant"> Content not relevant</label>
+            <label><input type="checkbox" name="reason" value="Prefer another service"> Prefer another service</label>
+            <label><input type="checkbox" name="reason" value="Other"> Other</label>
+        </div>
+        <p id="status" style="color: #ff0000; font-size: 14px;"></p>
+        <button onclick="unsubscribeUser()">Unsubscribe</button>
+    </div>
+    <script>
+        // Extract the email query parameter from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        console.log(`email is :${email}`);
+        const statusElement = document.getElementById('status');
+
+        // Function to send an unsubscribe request to the backend
+        async function unsubscribeUser() {
+            if (!email) {
+                statusElement.textContent = 'Invalid or missing email.';
+                return;
+            }
+
+            try {
+                // Replace 'your-backend-url' with the actual backend URL
+                const response = await fetch('https://l0ju9ny4v4.execute-api.ap-south-1.amazonaws.com/api/unsubscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email }),
+                });
+
+                if (response.ok) {
+                    statusElement.textContent = 'You have been successfully unsubscribed.';
+                } else {
+                    statusElement.textContent = 'Failed to unsubscribe. Please try again.';
+                }
+            } catch (error) {
+                console.error('Unsubscribe Error:', error);
+                statusElement.textContent = 'An error occurred while processing your request.';
+            }
+        }
     </script>
 </body>
 </html>
