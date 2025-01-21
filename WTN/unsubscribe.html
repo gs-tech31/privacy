@@ -39,6 +39,7 @@
         // Extract the email query parameter from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
+        console.log(`email is :${email}`);
         const statusElement = document.getElementById('status');
 
         // Function to send an unsubscribe request to the backend
