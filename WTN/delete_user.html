@@ -3,53 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delete Your Account - WTN/title>
+    <title>How to Delete Your WTN Account</title>
     <style>
+        :root {
+            --primary: #3498db;
+            --danger: #e74c3c;
+            --text: #333;
+            --light-gray: #f8f9fa;
+            --border: #dee2e6;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
             max-width: 800px;
-            margin: auto;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
         }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
         h1 {
-            color: #d9534f;
+            color: var(--danger);
+            margin-top: 0;
+            font-size: 28px;
         }
+        
+        .intro {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .steps-container {
+            counter-reset: step-counter;
+        }
+        
         .step {
-            margin-bottom: 20px;
+            display: flex;
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: var(--light-gray);
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .contact {
-            margin-top: 30px;
+        
+        .step:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .step-number {
+            background-color: var(--primary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: var(--primary);
+        }
+        
+        .note {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background-color: #ffebee;
+            border-left: 4px solid var(--danger);
+            padding: 15px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+        
+        .contact {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: var(--light-gray);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 14px;
+            color: #777;
         }
     </style>
 </head>
 <body>
-    <h1>How to Delete Your Account</h1>
-    <p>If you wish to delete your account from <strong>WTN</strong>, follow the steps below.</p>
-    
-    <div class="step">
-        <h2>Step 1: Open the App</h2>
-        <p>Launch the <strong>WTN</strong> on your mobile device.</p>
-    </div>
-
-    <div class="step">
-        <h2>Step 2: Navigate to Profile</h2>
-        <p>Go to the <strong>Profile</strong> section.</p>
-    </div>
-
-    <div class="step">
-        <h2>Step 3: Select 'Delete Account'</h2>
-        <p>Scroll down to the <strong>Delete Account</strong> section and tap on <strong>Delete Account</strong>.</p>
-    </div>
-
-    <div class="step">
-        <h2>Step 4: Confirm Deletion</h2>
-        <p>Follow the on-screen instructions to confirm your request. Once confirmed, your account and associated data will be deleted as per our data retention policy.</p>
-    </div>
-    
-    <div class="contact">
-        <p>If you experience any issues, please contact our support team at <a href="mailto:gstech.info.24@gmail.com">gstech.info.24@gmail.com</a>.</p>
+    <div class="container">
+        <header>
+            <h1>How to Delete Your WTN Account</h1>
+        </header>
+        
+        <div class="intro">
+            <p>We're sorry to see you go. If you wish to delete your account from <strong>WTN</strong>, please follow the steps below.</p>
+        </div>
+        
+        <div class="warning">
+            <strong>Important:</strong> Account deletion is permanent. All your data, including profile information, messages, and activity history will be permanently removed and cannot be recovered.
+        </div>
+        
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h2>Open the WTN App</h2>
+                    <p>Launch the <strong>WTN</strong> application on your mobile device and ensure you are logged in to the account you wish to delete.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h2>Navigate to Profile Settings</h2>
+                    <p>Tap on your profile icon in the bottom right corner, then select <strong>Settings</strong> (gear icon) in the top right corner of your profile screen.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h2>Delete Account</h2>
+                    <p>Scroll down to the bottom of the Settings page and tap on <strong>Delete Account</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h2>Select 'Delete Account'</h2>
+                    <p>Tap on the <strong>Delete Account</strong> option.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h2>Confirm Deletion</h2>
+                    <p>Read the information about account deletion carefully. If you wish to proceed, tap on the <strong>Delete My Account</strong> button and confirm your decision.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="note">
+            <p><strong>Note:</strong> According to our data retention policy, some information may be kept up.</p>
+        </div>
+        
+        <div class="contact">
+            <h3>Need Help?</h3>
+            <p>If you experience any issues during the account deletion process, our support team is here to assist you.</p>
+            <p>
+                <a href="mailto:gstech.info.24@gmail.com" class="btn">Email Support</a>
+            </p>
+        </div>
+        
+        <footer>
+            <p>WTN &copy; 2025 | <a href="https://gstechs.in/WTN/privacy">Privacy Policy</a></p>
+        </footer>
     </div>
 </body>
 </html>
