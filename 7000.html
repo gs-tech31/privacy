@@ -31,21 +31,12 @@
   <div id="items-container">Loading items...</div>
 
   <script>
-    // Option 1: Fetch from real Lambda endpoint
-    // const lambdaUrl = 'https://your-api-endpoint.com/items?tenant_id=7000';
-
-    // Option 2: Simulated response (copy-pasted from your message)
-    const response = {
-      statusCode: 200,
-      body: "{\"items\":[{\"discount_applicable\":true,\"is_cgst_applicable\":true,\"tenant_id\":\"7000\",\"portion_enabled\":false,\"category\":\"sweet-dish\",\"is_sgst_applicable\":true,\"item_code\":\"101\",\"group\":\"group1\",\"price\":3000,\"sold_out\":false,\"name\":\"icecream\",\"group_id\":\"9cd33875-b797-432f-a7d6-30bdcd0a635c\"},{\"discount_applicable\":true,\"is_cgst_applicable\":true,\"tenant_id\":\"7000\",\"portion_enabled\":false,\"category\":\"bevrage\",\"is_sgst_applicable\":true,\"item_code\":\"102\",\"group\":\"group1\",\"price\":3000,\"sold_out\":false,\"name\":\"coffee\",\"group_id\":\"9cd33875-b797-432f-a7d6-30bdcd0a635c\"}]}"
-    };
-
     const container = document.getElementById('items-container');
 
     function renderItems(items) {
-      container.innerHTML = ""; // Clear previous content
+      container.innerHTML = "";
 
-      if (!items.length) {
+      if (!items || !items.length) {
         container.textContent = "No items found.";
         return;
       }
@@ -55,7 +46,7 @@
         div.className = 'item';
 
         div.innerHTML = `
-          <h3>${item.name} (${item.item_code})</h3>
+          <h3>${item.name || 'Unnamed'} (${item.item_code})</h3>
           <p>Category: ${item.category}</p>
           <p>Group: ${item.group || "N/A"}</p>
           <p>Price: ₹${item.price}</p>
@@ -73,24 +64,17 @@
       });
     }
 
-    function loadItems() {
-      // Simulate fetching from Lambda
-      const parsed = JSON.parse(response.body);
-      renderItems(parsed.items);
+    async function loadItems() {
+      try {
+        const res = await fetch("https://nd06eudye2.execute-api.ap-south-1.amazonaws.com/get-items?tenant_id=7000");
+        const data = await res.json();
 
-      // If calling real API:
-      /*
-      fetch(lambdaUrl)
-        .then(res => res.json())
-        .then(data => {
-          const parsed = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
-          renderItems(parsed.items);
-        })
-        .catch(err => {
-          container.textContent = "Failed to load items.";
-          console.error(err);
-        });
-      */
+        const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data.body;
+        renderItems(parsed.items);
+      } catch (err) {
+        console.error("Failed to load items", err);
+        container.textContent = "Error loading items.";
+      }
     }
 
     loadItems();
