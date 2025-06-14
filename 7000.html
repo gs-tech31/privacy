@@ -1,61 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Menu Page</title>
+  <meta charset="UTF-8">
+  <title>Menu Items</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
     }
-    .menu-item {
+    .item {
       border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
+      padding: 12px;
+      margin: 10px 0;
       border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .item h3 {
+      margin: 0 0 8px;
+    }
+    .portion {
+      margin-left: 20px;
+      font-style: italic;
+      color: #444;
     }
   </style>
 </head>
 <body>
-  <h1>Restaurant Menu</h1>
-  <div id="menu-container">Loading menu...</div>
+
+  <h1>Menu Items</h1>
+  <div id="items-container">Loading items...</div>
 
   <script>
-    // Simulate a Lambda call
-    function fetchMenuFromLambda() {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const mockData = [
-            { item_name: "Paneer Butter Masala", item_price: 250 },
-            { item_name: "Dal Tadka", item_price: 180 },
-          ];
-          resolve(mockData);
-        }, 1000); // simulating 1 second delay
+    // Option 1: Fetch from real Lambda endpoint
+    // const lambdaUrl = 'https://your-api-endpoint.com/items?tenant_id=7000';
+
+    // Option 2: Simulated response (copy-pasted from your message)
+    const response = {
+      statusCode: 200,
+      body: "{\"items\":[{\"discount_applicable\":true,\"is_cgst_applicable\":true,\"tenant_id\":\"7000\",\"portion_enabled\":false,\"category\":\"sweet-dish\",\"is_sgst_applicable\":true,\"item_code\":\"101\",\"group\":\"group1\",\"price\":3000,\"sold_out\":false,\"name\":\"icecream\",\"group_id\":\"9cd33875-b797-432f-a7d6-30bdcd0a635c\"},{\"discount_applicable\":true,\"is_cgst_applicable\":true,\"tenant_id\":\"7000\",\"portion_enabled\":false,\"category\":\"bevrage\",\"is_sgst_applicable\":true,\"item_code\":\"102\",\"group\":\"group1\",\"price\":3000,\"sold_out\":false,\"name\":\"coffee\",\"group_id\":\"9cd33875-b797-432f-a7d6-30bdcd0a635c\"}]}"
+    };
+
+    const container = document.getElementById('items-container');
+
+    function renderItems(items) {
+      container.innerHTML = ""; // Clear previous content
+
+      if (!items.length) {
+        container.textContent = "No items found.";
+        return;
+      }
+
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+
+        div.innerHTML = `
+          <h3>${item.name} (${item.item_code})</h3>
+          <p>Category: ${item.category}</p>
+          <p>Group: ${item.group || "N/A"}</p>
+          <p>Price: ₹${item.price}</p>
+          <p>Sold Out: ${item.sold_out ? 'Yes' : 'No'}</p>
+        `;
+
+        if (item.portion_enabled && item.portions_price) {
+          div.innerHTML += `<p>Portion Prices:</p>`;
+          for (const [portion, priceObj] of Object.entries(item.portions_price)) {
+            div.innerHTML += `<div class="portion">${portion}: ₹${priceObj.N}</div>`;
+          }
+        }
+
+        container.appendChild(div);
       });
     }
 
-    // Populate the menu in the DOM
-    async function loadMenu() {
-      const container = document.getElementById("menu-container");
-      try {
-        const menuItems = await fetchMenuFromLambda();
-        container.innerHTML = ""; // Clear loading text
+    function loadItems() {
+      // Simulate fetching from Lambda
+      const parsed = JSON.parse(response.body);
+      renderItems(parsed.items);
 
-        menuItems.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "menu-item";
-          div.innerHTML = `<strong>${item.item_name}</strong><br/>Price: ₹${item.item_price}`;
-          container.appendChild(div);
+      // If calling real API:
+      /*
+      fetch(lambdaUrl)
+        .then(res => res.json())
+        .then(data => {
+          const parsed = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+          renderItems(parsed.items);
+        })
+        .catch(err => {
+          container.textContent = "Failed to load items.";
+          console.error(err);
         });
-      } catch (error) {
-        container.innerHTML = "Failed to load menu.";
-        console.error("Error fetching menu:", error);
-      }
+      */
     }
 
-    // Call on page load
-    loadMenu();
+    loadItems();
   </script>
+
 </body>
 </html>
