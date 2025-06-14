@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Menu Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .menu-item {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Restaurant Menu</h1>
+  <div id="menu-container">Loading menu...</div>
+
+  <script>
+    // Simulate a Lambda call
+    function fetchMenuFromLambda() {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const mockData = [
+            { item_name: "Paneer Butter Masala", item_price: 250 },
+            { item_name: "Dal Tadka", item_price: 180 },
+          ];
+          resolve(mockData);
+        }, 1000); // simulating 1 second delay
+      });
+    }
+
+    // Populate the menu in the DOM
+    async function loadMenu() {
+      const container = document.getElementById("menu-container");
+      try {
+        const menuItems = await fetchMenuFromLambda();
+        container.innerHTML = ""; // Clear loading text
+
+        menuItems.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "menu-item";
+          div.innerHTML = `<strong>${item.item_name}</strong><br/>Price: ₹${item.item_price}`;
+          container.appendChild(div);
+        });
+      } catch (error) {
+        container.innerHTML = "Failed to load menu.";
+        console.error("Error fetching menu:", error);
+      }
+    }
+
+    // Call on page load
+    loadMenu();
+  </script>
+</body>
+</html>
