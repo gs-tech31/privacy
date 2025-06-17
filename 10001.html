@@ -553,7 +553,7 @@
           },
           mode: 'cors'
         });
-        
+        console.log("response from api------------>",response);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
