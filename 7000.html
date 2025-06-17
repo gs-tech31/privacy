@@ -569,7 +569,8 @@
         
         const data = await response.json();
         const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data.body;
-        
+        console.log("data----------->",data);
+        console.log("body----------->",data.body);
         if (parsed && parsed.items && parsed.items.length > 0) {
           renderItems(parsed.items);
           console.log("✅ Successfully loaded menu from API");
