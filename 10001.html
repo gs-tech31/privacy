@@ -559,7 +559,7 @@
         }
         
         const data = await response.json();
-        const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data.body;
+        const parsed = typeof data === "string" ? JSON.parse(data) : data;
         
         if (parsed && parsed.items && parsed.items.length > 0) {
           renderItems(parsed.items);
