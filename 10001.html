@@ -300,6 +300,127 @@
       font-size: 0.9rem;
     }
 
+    /* Footer Styles */
+    .menu-footer {
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      margin-top: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .menu-footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #ff6b6b, #ee5a24, #3498db, #9b59b6);
+      animation: gradientMove 3s ease-in-out infinite;
+    }
+
+    @keyframes gradientMove {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .gstech-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      gap: 15px;
+    }
+
+    .logo-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 24px;
+      color: white;
+      box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-icon::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: shine 2s infinite;
+    }
+
+    @keyframes shine {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+
+    .logo-text {
+      font-size: 2.5rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .contact-info {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px 20px;
+      border-radius: 25px;
+      backdrop-filter: blur(5px);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .contact-item:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .contact-icon {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .contact-text {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .footer-tagline {
+      margin-top: 25px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+      font-style: italic;
+    }
+
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
       body {
@@ -326,6 +447,24 @@
         margin-left: 0;
         margin-top: 8px;
       }
+
+      .menu-footer {
+        padding: 25px 20px;
+      }
+
+      .gstech-logo {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .logo-text {
+        font-size: 2rem;
+      }
+
+      .contact-info {
+        flex-direction: column;
+        gap: 15px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -349,6 +488,24 @@
         font-size: 0.8rem;
         padding: 10px;
       }
+
+      .menu-footer {
+        padding: 20px 15px;
+      }
+
+      .logo-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+      }
+
+      .logo-text {
+        font-size: 1.8rem;
+      }
+
+      .contact-item {
+        padding: 10px 15px;
+      }
     }
   </style>
 </head>
@@ -365,6 +522,33 @@
           <div class="spinner"></div>
           <div>Loading our delicious menu...</div>
         </div>
+      </div>
+    </div>
+
+    <div class="menu-footer">
+      <div class="gstech-logo">
+        <div class="logo-icon">GS</div>
+        <div class="logo-text">GStech</div>
+      </div>
+      
+      <div class="contact-info">
+        <div class="contact-item">
+          <svg class="contact-icon" viewBox="0 0 24 24">
+            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+          </svg>
+          <span class="contact-text">info@gstech.com</span>
+        </div>
+        
+        <div class="contact-item">
+          <svg class="contact-icon" viewBox="0 0 24 24">
+            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+          </svg>
+          <span class="contact-text">+91 98765 43210</span>
+        </div>
+      </div>
+      
+      <div class="footer-tagline">
+        Powered by GStech - Innovating Restaurant Technology
       </div>
     </div>
   </div>
