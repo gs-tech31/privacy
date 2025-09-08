@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Menu</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .menu-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .menu-header {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .menu-header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 20px 20px;
+      animation: float 20s infinite linear;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(-20px, -20px) rotate(360deg); }
+    }
+
+    .menu-header h1 {
+      font-size: 3rem;
+      font-weight: 300;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .menu-header p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      position: relative;
+      z-index: 1;
+    }
+
+    .menu-content {
+      padding: 30px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 1.2rem;
+      color: #666;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #ff6b6b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .category-section {
+      margin-bottom: 40px;
+    }
+
+    .category-title {
+      font-size: 2rem;
+      color: #ff6b6b;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #ff6b6b;
+      display: inline-block;
+    }
+
+    .items-grid {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .menu-item {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 calc(25% - 15px);
+      min-height: auto;
+    }
+
+    .menu-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .menu-item:hover::before {
+      transform: scaleX(1);
+    }
+
+    .menu-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+
+    .menu-item.sold-out {
+      opacity: 0.6;
+      background: #f8f9fa;
+    }
+
+    .menu-item.sold-out::after {
+      content: 'SOLD OUT';
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #dc3545;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .item-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .item-code {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      font-family: 'Courier New', monospace;
+      background: #ecf0f1;
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    .item-price {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #27ae60;
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+
+    .item-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .detail-tag {
+      background: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .detail-tag.category {
+      background: #9b59b6;
+    }
+
+    .detail-tag.group {
+      background: #e67e22;
+    }
+
+    .portions-section {
+      margin-top: auto;
+      padding-top: 15px;
+      border-top: 1px solid #ecf0f1;
+    }
+
+    .portions-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    .portions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 8px;
+    }
+
+    .portion-item {
+      background: #f8f9fa;
+      padding: 8px 6px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #e9ecef;
+      transition: all 0.2s ease;
+    }
+
+    .portion-item:hover {
+      background: #e9ecef;
+      border-color: #ff6b6b;
+    }
+
+    .portion-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 2px;
+    }
+
+    .portion-price {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #27ae60;
+    }
+
+    .no-items {
+      text-align: center;
+      padding: 60px 20px;
+      color: #7f8c8d;
+      font-size: 1.2rem;
+    }
+
+    .error {
+      text-align: center;
+      padding: 60px 20px;
+      color: #e74c3c;
+      font-size: 1.2rem;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 1200px) {
+      .items-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .items-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .menu-header {
+        padding: 30px 20px;
+      }
+
+      .menu-header h1 {
+        font-size: 2.2rem;
+      }
+
+      .menu-header p {
+        font-size: 1rem;
+      }
+
+      .menu-content {
+        padding: 20px;
+      }
+
+      .items-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .menu-item {
+        padding: 20px;
+        min-height: auto;
+      }
+
+      .item-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .item-price {
+        margin-left: 0;
+        margin-top: 8px;
+      }
+
+      .category-title {
+        font-size: 1.6rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .menu-header h1 {
+        font-size: 1.8rem;
+      }
+
+      .portions-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .detail-tag {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="menu-container">
+    <div class="menu-header">
+      <h1>Our Menu</h1>
+      <p>Delicious dishes crafted with love</p>
+    </div>
+    
+    <div class="menu-content">
+      <div id="items-container">
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>Loading our delicious menu...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById('items-container');
+    
+    function groupItemsByCategory(items) {
+      const grouped = {};
+      items.forEach(item => {
+        const category = item.category || 'Other';
+        if (!grouped[category]) {
+          grouped[category] = [];
+        }
+        grouped[category].push(item);
+      });
+      return grouped;
+    }
+    
+    function renderItems(items) {
+      container.innerHTML = "";
+      
+      if (!items || !items.length) {
+        container.innerHTML = '<div class="no-items">No menu items available at the moment.</div>';
+        return;
+      }
+      
+      const groupedItems = groupItemsByCategory(items);
+      
+      Object.entries(groupedItems).forEach(([category, categoryItems]) => {
+        const categorySection = document.createElement('div');
+        categorySection.className = 'category-section';
+        
+        const categoryTitle = document.createElement('h2');
+        categoryTitle.className = 'category-title';
+        categoryTitle.textContent = category;
+        categorySection.appendChild(categoryTitle);
+        
+        const itemsGrid = document.createElement('div');
+        itemsGrid.className = 'items-grid';
+        
+        categoryItems.forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = `menu-item ${item.sold_out ? 'sold-out' : ''}`;
+          
+          itemDiv.innerHTML = `
+            <div class="item-header">
+              <div>
+                <div class="item-name">${item.name || 'Unnamed Item'}</div>
+                <div class="item-code">#${item.item_code}</div>
+              </div>
+              <div class="item-price">₹${item.price}</div>
+            </div>
+            
+            <div class="item-details">
+              <span class="detail-tag category">${item.category}</span>
+              ${item.group ? `<span class="detail-tag group">${item.group}</span>` : ''}
+            </div>
+            
+            ${item.portion_enabled && item.portions_price ? `
+              <div class="portions-section">
+                <div class="portions-title">Available Portions</div>
+                <div class="portions-grid">
+                  ${Object.entries(item.portions_price).map(([portion, priceObj]) => `
+                    <div class="portion-item">
+                      <div class="portion-name">${portion}</div>
+                      <div class="portion-price">₹${priceObj.N}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          `;
+          
+          itemsGrid.appendChild(itemDiv);
+        });
+        
+        categorySection.appendChild(itemsGrid);
+        container.appendChild(categorySection);
+      });
+    }
+    
+    // Sample menu data as fallback
+    const sampleMenuData = {
+      items: [
+        {
+          name: "Butter Chicken",
+          item_code: "BC001",
+          category: "Main Course",
+          group: "North Indian",
+          price: 320,
+          sold_out: false,
+          portion_enabled: true,
+          portions_price: {
+            "Half Plate": { N: 180 },
+            "Full Plate": { N: 320 },
+            "Family Pack": { N: 580 }
+          }
+        },
+        {
+          name: "Margherita Pizza",
+          item_code: "MP002",
+          category: "Pizza",
+          group: "Italian",
+          price: 280,
+          sold_out: false,
+          portion_enabled: true,
+          portions_price: {
+            "Regular": { N: 280 },
+            "Medium": { N: 420 },
+            "Large": { N: 580 }
+          }
+        },
+        {
+          name: "Chicken Biryani",
+          item_code: "CB003",
+          category: "Main Course",
+          group: "South Indian",
+          price: 350,
+          sold_out: false,
+          portion_enabled: false
+        },
+        {
+          name: "Caesar Salad",
+          item_code: "CS004",
+          category: "Salads",
+          group: "Continental",
+          price: 220,
+          sold_out: false,
+          portion_enabled: false
+        },
+        {
+          name: "Masala Dosa",
+          item_code: "MD005",
+          category: "South Indian",
+          group: "Breakfast",
+          price: 150,
+          sold_out: true,
+          portion_enabled: false
+        },
+        {
+          name: "Chocolate Brownie",
+          item_code: "CB006",
+          category: "Desserts",
+          group: "Sweet",
+          price: 180,
+          sold_out: false,
+          portion_enabled: true,
+          portions_price: {
+            "Single": { N: 180 },
+            "Double": { N: 320 }
+          }
+        },
+        {
+          name: "Fresh Lime Soda",
+          item_code: "FLS007",
+          category: "Beverages",
+          group: "Cold Drinks",
+          price: 80,
+          sold_out: false,
+          portion_enabled: false
+        },
+        {
+          name: "Dal Tadka",
+          item_code: "DT008",
+          category: "Main Course",
+          group: "North Indian",
+          price: 180,
+          sold_out: false,
+          portion_enabled: false
+        }
+      ]
+    };
+
+    async function loadItems() {
+      try {
+        // Try to fetch from API first
+        const response = await fetch("https://nd06eudye2.execute-api.ap-south-1.amazonaws.com/get-items?tenant_id=10000", {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors'
+        });
+        console.log("response----------->",response);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const parsed = typeof data === "string" ? JSON.parse(data) : data;
+        console.log("data----------->",data);
+        console.log("body----------->",data.body);
+        if (parsed && parsed.items && parsed.items.length > 0) {
+          renderItems(parsed.items);
+          console.log("✅ Successfully loaded menu from API");
+        } else {
+          throw new Error('No items found in API response');
+        }
+      } catch (error) {
+        console.warn("⚠️ API fetch failed, using sample data:", error.message);
+        
+        // Show a notice and use sample data
+        const notice = document.createElement('div');
+        notice.style.cssText = `
+          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          color: white;
+          padding: 15px;
+          margin-bottom: 20px;
+          border-radius: 10px;
+          text-align: center;
+          font-size: 0.9rem;
+        `;
+        notice.innerHTML = `
+          <strong>Demo Mode:</strong> Showing sample menu items. 
+          <br><small>API connection failed - this is likely due to CORS restrictions.</small>
+        `;
+        
+        container.innerHTML = '';
+        container.appendChild(notice);
+        
+        // Use sample data
+        renderItems(sampleMenuData.items);
+      }
+    }
+    
+    // Load items when page loads
+    loadItems();
+  </script>
+</body>
+</html>
