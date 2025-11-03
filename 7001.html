@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DigiKhana - Gourmet Restaurant Menu</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍴</text></svg>">
+  <title>DigiKhana - Premium Restaurant Menu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
+    
     * {
       margin: 0;
       padding: 0;
@@ -77,7 +79,7 @@
       font-family: 'Playfair Display', serif;
       font-size: clamp(2.5rem, 5vw, 4rem);
       font-weight: 700;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -98,7 +100,7 @@
 
     .restaurant-badge {
       display: inline-block;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
       color: white;
       padding: 8px 20px;
       border-radius: 25px;
@@ -151,26 +153,31 @@
     }
 
     .items-grid {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 20px;
       margin-bottom: 30px;
+      width: 100%;
     }
 
     .menu-item {
-      background: white;
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
+      background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.08),
+        0 4px 15px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       position: relative;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      flex: 0 0 calc(25% - 15px);
-      min-height: auto;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
     }
 
     .menu-item::before {
@@ -179,10 +186,24 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+      height: 5px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
       transform: scaleX(0);
-      transition: transform 0.3s ease;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 20px 20px 0 0;
+    }
+    
+    .menu-item::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(102, 126, 234, 0.03) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
     }
 
     .menu-item:hover::before {
@@ -190,8 +211,15 @@
     }
 
     .menu-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.12),
+        0 8px 25px rgba(102, 126, 234, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    
+    .menu-item:hover::after {
+      opacity: 1;
     }
 
     .menu-item.sold-out {
@@ -220,28 +248,42 @@
     }
 
     .item-name {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: #2c3e50;
-      margin-bottom: 4px;
-      line-height: 1.3;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      letter-spacing: -0.02em;
     }
 
     .item-code {
-      font-size: 0.8rem;
-      color: #7f8c8d;
-      font-family: 'Courier New', monospace;
-      background: #ecf0f1;
-      padding: 2px 6px;
-      border-radius: 8px;
+      font-family: 'Inter', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #667eea;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     .item-price {
-      font-size: 1.3rem;
-      font-weight: bold;
-      color: #27ae60;
-      margin-left: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-left: 15px;
       white-space: nowrap;
+      text-shadow: 0 2px 4px rgba(39, 174, 96, 0.2);
     }
 
     .item-details {
@@ -252,20 +294,34 @@
     }
 
     .detail-tag {
-      background: #3498db;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 4px 8px;
-      border-radius: 15px;
+      padding: 8px 16px;
+      border-radius: 20px;
       font-size: 0.8rem;
-      font-weight: 500;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+    }
+    
+    .detail-tag:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
 
     .detail-tag.category {
-      background: #9b59b6;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
     }
 
     .detail-tag.group {
-      background: #e67e22;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
+      color: #2c3e50;
+      font-weight: 700;
     }
 
     .portions-section {
@@ -275,10 +331,15 @@
     }
 
     .portions-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #2c3e50;
-      margin-bottom: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 15px;
+      letter-spacing: -0.01em;
     }
 
     .portions-grid {
@@ -288,30 +349,46 @@
     }
 
     .portion-item {
-      background: #f8f9fa;
-      padding: 8px 6px;
-      border-radius: 8px;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      padding: 12px 10px;
+      border-radius: 15px;
       text-align: center;
-      border: 2px solid #e9ecef;
-      transition: all 0.2s ease;
+      border: 2px solid rgba(102, 126, 234, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .portion-item:hover {
-      background: #e9ecef;
-      border-color: #ff6b6b;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: #667eea;
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.25);
+    }
+    
+    .portion-item:hover .portion-name,
+    .portion-item:hover .portion-price {
+      color: white;
     }
 
     .portion-name {
-      font-size: 0.8rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
       font-weight: 600;
       color: #495057;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
+      letter-spacing: 0.3px;
+      transition: color 0.3s ease;
     }
 
     .portion-price {
-      font-size: 0.9rem;
-      font-weight: bold;
-      color: #27ae60;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: color 0.3s ease;
     }
 
     .no-items {
@@ -343,49 +420,90 @@
       }
     }
 
+    @media (max-width: 1200px) {
+      .items-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .items-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
     @media (max-width: 768px) {
       body {
         padding: 10px;
+        font-size: 14px;
       }
 
       .menu-header {
-        padding: 30px 20px;
+        padding: 20px 15px;
       }
 
       .menu-header h1 {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
+        margin-bottom: 5px;
       }
 
       .menu-header p {
-        font-size: 1rem;
+        font-size: 0.9rem;
       }
 
       .menu-content {
-        padding: 20px;
+        padding: 10px;
       }
 
       .items-grid {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 15px;
       }
 
       .menu-item {
-        padding: 20px;
-        min-height: auto;
+        padding: 15px;
+        margin: 0;
+        width: 100%;
       }
 
       .item-header {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .item-name {
+        font-size: 1.1rem;
       }
 
       .item-price {
-        margin-left: 0;
-        margin-top: 8px;
+        font-size: 1.2rem;
+        margin: 0;
       }
 
       .category-title {
+        font-size: 1.4rem;
+        margin: 15px 0 10px;
+        padding-bottom: 5px;
+      }
+
+      .detail-tag {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .menu-header h1 {
         font-size: 1.6rem;
+      }
+
+      .menu-item {
+        padding: 12px;
+      }
+
+      .portions-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -408,9 +526,8 @@
 <body>
   <div class="menu-container">
     <div class="menu-header">
-      <h1>DigiKhana Gourmet</h1>
-      <p>Artisanal Flavors & Fresh Ingredients</p>
-      <div class="restaurant-badge">Tenant ID: 7001</div>
+      <h1>Patil Wada, Nashik</h1>
+      <p>Powered By DigiKhana</p>
     </div>
     
     <div class="menu-content">
