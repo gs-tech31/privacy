@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DigiKhana - Premium Restaurant Menu</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
-    
+
     * {
       margin: 0;
       padding: 0;
@@ -31,7 +33,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: 
+      background:
         radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(79, 172, 254, 0.2) 0%, transparent 50%);
@@ -65,14 +67,19 @@
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
       background-size: 20px 20px;
       animation: float 20s infinite linear;
     }
 
     @keyframes float {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      100% { transform: translate(-20px, -20px) rotate(360deg); }
+      0% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+
+      100% {
+        transform: translate(-20px, -20px) rotate(360deg);
+      }
     }
 
     .menu-header h1 {
@@ -135,8 +142,13 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
 
     .category-section {
@@ -164,7 +176,7 @@
       background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
       border-radius: 20px;
       padding: 28px;
-      box-shadow: 
+      box-shadow:
         0 10px 30px rgba(0, 0, 0, 0.08),
         0 4px 15px rgba(0, 0, 0, 0.05),
         inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -192,7 +204,7 @@
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       border-radius: 20px 20px 0 0;
     }
-    
+
     .menu-item::after {
       content: '';
       position: absolute;
@@ -212,12 +224,12 @@
 
     .menu-item:hover {
       transform: translateY(-8px) scale(1.02);
-      box-shadow: 
+      box-shadow:
         0 20px 40px rgba(0, 0, 0, 0.12),
         0 8px 25px rgba(102, 126, 234, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
-    
+
     .menu-item:hover::after {
       opacity: 1;
     }
@@ -306,7 +318,7 @@
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
       transition: all 0.3s ease;
     }
-    
+
     .detail-tag:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
@@ -364,7 +376,7 @@
       transform: translateY(-3px) scale(1.05);
       box-shadow: 0 8px 20px rgba(102, 126, 234, 0.25);
     }
-    
+
     .portion-item:hover .portion-name,
     .portion-item:hover .portion-price {
       color: white;
@@ -521,15 +533,228 @@
         padding: 3px 6px;
       }
     }
+
+    /* Cart Styles */
+    .cart-floating-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 600px;
+      background: #2c3e50;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 50px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: none;
+      /* Hidden by default */
+    }
+
+    .cart-floating-bar:hover {
+      transform: translateX(-50%) translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .cart-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cart-count {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .cart-total {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .view-cart-btn {
+      background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* Cart modal */
+    .cart-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+      /* Slide up on mobile */
+      backdrop-filter: blur(5px);
+    }
+
+    .cart-modal {
+      background: white;
+      width: 100%;
+      max-width: 600px;
+      max-height: 80vh;
+      border-radius: 20px 20px 0 0;
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+      }
+
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    @media (min-width: 768px) {
+      .cart-modal-overlay {
+        align-items: center;
+      }
+
+      .cart-modal {
+        border-radius: 20px;
+        max-height: 70vh;
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    }
+
+    .cart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .cart-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .close-cart {
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #7f8c8d;
+    }
+
+    .cart-items {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed #eee;
+    }
+
+    .cart-item-info {
+      flex: 1;
+    }
+
+    .cart-item-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .cart-item-price {
+      color: #27ae60;
+      font-weight: 700;
+    }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8f9fa;
+      padding: 5px;
+      border-radius: 25px;
+    }
+
+    .qty-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .qty-value {
+      font-weight: 600;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .place-order-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .place-order-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      filter: grayscale(1);
+    }
   </style>
 </head>
+
 <body>
   <div class="menu-container">
     <div class="menu-header">
       <h1>Patil Wada, Nashik</h1>
       <p>Powered By DigiKhana</p>
     </div>
-    
+
     <div class="menu-content">
       <div id="items-container">
         <div class="loading">
@@ -540,9 +765,94 @@
     </div>
   </div>
 
+  <!-- Cart UI -->
+  <div class="cart-floating-bar" id="cart-bar" onclick="openCart()">
+    <div class="cart-info">
+      <span class="cart-count">0 Items</span>
+      <span class="cart-total">₹0</span>
+    </div>
+    <div class="view-cart-btn">View Cart</div>
+  </div>
+
+  <div class="cart-modal-overlay" id="cart-modal">
+    <div class="cart-modal">
+      <div class="cart-header">
+        <div class="cart-title">Your Order</div>
+        <div class="close-cart" onclick="closeCart()">&times;</div>
+      </div>
+      <div class="cart-items" id="cart-items-list">
+        <!-- Cart Items Injected Here -->
+      </div>
+      
+      <!-- Guest Information Form -->
+      <div id="guest-info-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #2c3e50;">Your Name (Optional)</label>
+          <input type="text" id="guest-name" placeholder="Enter your name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #2c3e50;">Phone Number (Optional)</label>
+          <input type="tel" id="guest-phone" placeholder="Enter your phone number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #2c3e50;">Special Instructions (Optional)</label>
+          <textarea id="guest-notes" placeholder="Any special requests or dietary requirements..." rows="3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; resize: vertical;"></textarea>
+        </div>
+      </div>
+
+      <!-- Request Status Display -->
+      <div id="request-status-display" style="display: none; margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center;">
+        <div id="status-icon" style="font-size: 2rem; margin-bottom: 10px;"></div>
+        <div id="status-message" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 5px;"></div>
+        <div id="status-details" style="font-size: 0.9rem; color: #666;"></div>
+      </div>
+
+      <button class="place-order-btn" id="place-order-btn" onclick="submitOrder()">Request Order</button>
+    </div>
+  </div>
+
   <script>
     const container = document.getElementById('items-container');
-    
+    const cartBar = document.getElementById('cart-bar');
+    const cartModal = document.getElementById('cart-modal');
+    const cartItemsList = document.getElementById('cart-items-list');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+
+    // State
+    const state = {
+      items: [],
+      cart: {}, // { itemCode: { qty: 1, item: {...} } }
+      tenantId: '7001', // Default, should be parsed from URL
+      tableId: null,
+      hallId: null,
+      currentRequestId: null, // Track submitted request
+      requestStatus: null, // pending | approved | denied
+      statusPollInterval: null
+    };
+
+    // Parse URL Params
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tenant_id')) state.tenantId = urlParams.get('tenant_id');
+    if (urlParams.get('table_id')) state.tableId = urlParams.get('table_id');
+    if (urlParams.get('hall_id')) state.hallId = urlParams.get('hall_id');
+
+    // Warn if required params missing
+    if (!state.tableId || !state.hallId) {
+      console.warn("Missing required URL parameters. Order requests may fail.");
+      const warning = document.createElement('div');
+      warning.style.cssText = `
+        background: #ff6b6b;
+        color: white;
+        padding: 15px;
+        margin: 20px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 600;
+      `;
+      warning.textContent = '⚠️ Please scan the QR code on your table to access the menu.';
+      document.querySelector('.menu-content').prepend(warning);
+    }
+
     function groupItemsByCategory(items) {
       const grouped = {};
       items.forEach(item => {
@@ -554,33 +864,34 @@
       });
       return grouped;
     }
-    
+
     function renderItems(items) {
+      state.items = items; // Store for reference
       container.innerHTML = "";
-      
+
       if (!items || !items.length) {
         container.innerHTML = '<div class="no-items">No menu items available at the moment.</div>';
         return;
       }
-      
+
       const groupedItems = groupItemsByCategory(items);
-      
+
       Object.entries(groupedItems).forEach(([category, categoryItems]) => {
         const categorySection = document.createElement('div');
         categorySection.className = 'category-section';
-        
+
         const categoryTitle = document.createElement('h2');
         categoryTitle.className = 'category-title';
         categoryTitle.textContent = category;
         categorySection.appendChild(categoryTitle);
-        
+
         const itemsGrid = document.createElement('div');
         itemsGrid.className = 'items-grid';
-        
+
         categoryItems.forEach(item => {
           const itemDiv = document.createElement('div');
           itemDiv.className = `menu-item ${item.sold_out ? 'sold-out' : ''}`;
-          
+
           itemDiv.innerHTML = `
             <div class="item-header">
               <div>
@@ -595,9 +906,15 @@
               ${item.group ? `<span class="detail-tag group">${item.group}</span>` : ''}
             </div>
             
+            ${!item.sold_out ? `
+              <div class="qty-controls" style="margin-top: 15px; justify-content: flex-end; background: transparent;">
+                 ${getItemQtyControl(item)}
+              </div>
+            ` : ''}
+
             ${item.portion_enabled && item.portions_price ? `
               <div class="portions-section">
-                <div class="portions-title">Available Portions</div>
+                <div class="portions-title">Available Portions (Ask Waiter)</div>
                 <div class="portions-grid">
                   ${Object.entries(item.portions_price).map(([portion, priceObj]) => `
                     <div class="portion-item">
@@ -609,15 +926,353 @@
               </div>
             ` : ''}
           `;
-          
+
           itemsGrid.appendChild(itemDiv);
         });
-        
+
         categorySection.appendChild(itemsGrid);
         container.appendChild(categorySection);
       });
+      updateCartUI(); // Initial check
     }
-    
+
+    function getItemQtyControl(item) {
+      const qty = state.cart[item.item_code]?.qty || 0;
+      if (qty === 0) {
+        return `<button class="view-cart-btn" style="padding: 6px 16px; font-size: 0.8rem;" onclick="addToCart('${item.item_code}')">ADD</button>`;
+      } else {
+        return `
+          <div class="qty-controls">
+            <button class="qty-btn" onclick="removeFromCart('${item.item_code}')">-</button>
+            <span class="qty-value">${qty}</span>
+            <button class="qty-btn" onclick="addToCart('${item.item_code}')">+</button>
+          </div>
+        `;
+      }
+    }
+
+    window.addToCart = (itemCode) => {
+      const item = state.items.find(i => i.item_code === itemCode);
+      if (!item) return;
+
+      if (!state.cart[itemCode]) {
+        state.cart[itemCode] = { qty: 0, item: item };
+      }
+      state.cart[itemCode].qty++;
+
+      renderItems(state.items);
+      updateCartUI();
+    };
+
+    window.removeFromCart = (itemCode) => {
+      if (state.cart[itemCode]) {
+        state.cart[itemCode].qty--;
+        if (state.cart[itemCode].qty <= 0) {
+          delete state.cart[itemCode];
+        }
+      }
+      renderItems(state.items);
+      updateCartUI();
+    };
+
+    function updateCartUI() {
+      const totalQty = Object.values(state.cart).reduce((acc, curr) => acc + curr.qty, 0);
+      const totalPrice = Object.values(state.cart).reduce((acc, curr) => acc + (curr.qty * curr.item.price), 0);
+
+      document.querySelector('.cart-count').textContent = `${totalQty} Items`;
+      document.querySelector('.cart-total').textContent = `₹${totalPrice}`;
+
+      if (totalQty > 0) {
+        cartBar.style.display = 'flex';
+      } else {
+        cartBar.style.display = 'none';
+        closeCart();
+      }
+    }
+
+    window.openCart = () => {
+      cartModal.style.display = 'flex';
+      renderCartItems();
+    };
+
+    window.closeCart = () => {
+      cartModal.style.display = 'none';
+    };
+
+    function renderCartItems() {
+      cartItemsList.innerHTML = "";
+
+      const cartEntries = Object.entries(state.cart);
+      if (cartEntries.length === 0) {
+        cartItemsList.innerHTML = "<div class='no-items'>Cart is empty</div>";
+        return;
+      }
+
+      cartEntries.forEach(([code, { qty, item }]) => {
+        const row = document.createElement('div');
+        row.className = 'cart-item';
+        row.innerHTML = `
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-price">₹${item.price * qty}</div>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn" onclick="removeFromCart('${code}'); renderCartItems();">-</button>
+            <span class="qty-value">${qty}</span>
+            <button class="qty-btn" onclick="addToCart('${code}'); renderCartItems();">+</button>
+          </div>
+        `;
+        cartItemsList.appendChild(row);
+      });
+    }
+
+    window.submitOrder = async () => {
+      if (!state.tableId || !state.hallId) {
+        alert("⚠️ Please scan the QR code on your table. Missing table or hall information.");
+        return;
+      }
+
+      const totalQty = Object.values(state.cart).reduce((acc, curr) => acc + curr.qty, 0);
+      if (totalQty === 0) {
+        alert("Your cart is empty. Please add items before requesting.");
+        return;
+      }
+
+      placeOrderBtn.textContent = "Submitting Request...";
+      placeOrderBtn.disabled = true;
+
+      // Hide status display if shown
+      const statusDisplay = document.getElementById('request-status-display');
+      statusDisplay.style.display = 'none';
+
+      // Prepare Payload
+      const itemsPayload = Object.values(state.cart).map(c => ({
+        item_code: c.item.item_code,
+        name: c.item.name,
+        price: c.item.price,
+        quantity: c.qty,
+        category: c.item.category,
+        group: c.item.group,
+        group_id: c.item.group_id,
+        category_id: c.item.category_id,
+        subcategory_id: c.item.subcategory_id,
+        is_cgst_applicable: c.item.is_cgst_applicable || false,
+        is_sgst_applicable: c.item.is_sgst_applicable || false,
+        notes: c.item.notes || [],
+      }));
+
+      // Get guest information
+      const guestName = document.getElementById('guest-name').value.trim() || null;
+      const guestPhone = document.getElementById('guest-phone').value.trim() || null;
+      const guestNotes = document.getElementById('guest-notes').value.trim() || null;
+
+      const payload = {
+        tenant_id: state.tenantId,
+        table_id: state.tableId,
+        hall_id: state.hallId,
+        items: itemsPayload,
+        guest_name: guestName,
+        guest_phone: guestPhone,
+        guest_notes: guestNotes,
+      };
+
+      try {
+        // Determine API URL - use localhost for development, or production URL
+        const apiUrl = window.location.hostname === 'localhost' 
+          ? 'http://localhost:3001/api/guest/order/request'
+          : 'https://d7jbqla20m.execute-api.ap-south-1.amazonaws.com/$default/api/guest/order/request';
+
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // Store request ID and start polling
+          state.currentRequestId = data.request_id;
+          state.requestStatus = 'pending';
+          
+          // Show success message and start status polling
+          showRequestStatus('pending', 'Order request submitted! Waiting for staff approval...');
+          
+          // Clear cart
+          state.cart = {};
+          updateCartUI();
+          
+          // Clear guest info fields
+          document.getElementById('guest-name').value = '';
+          document.getElementById('guest-phone').value = '';
+          document.getElementById('guest-notes').value = '';
+          
+          // Hide submit button and start polling
+          placeOrderBtn.style.display = 'none';
+          startStatusPolling(data.request_id);
+          
+          // Re-render items to update cart buttons
+          renderItems(state.items);
+        } else {
+          // Handle validation errors
+          let errorMsg = data.error || data.message || "Failed to submit request";
+          
+          if (data.not_available && data.not_available.length > 0) {
+            errorMsg += `\n\nSold Out Items: ${data.not_available.join(', ')}`;
+          }
+          if (data.name_changed && data.name_changed.length > 0) {
+            errorMsg += `\n\nItems with name changes: ${data.name_changed.join(', ')}`;
+          }
+          if (data.price_changed && data.price_changed.length > 0) {
+            errorMsg += `\n\nItems with price changes: ${data.price_changed.join(', ')}`;
+          }
+          
+          alert(errorMsg);
+          placeOrderBtn.textContent = "Request Order";
+          placeOrderBtn.disabled = false;
+        }
+      } catch (e) {
+        console.error("Submit error:", e);
+        alert("Network Error: Could not send request. Please check your connection and try again.");
+        placeOrderBtn.textContent = "Request Order";
+        placeOrderBtn.disabled = false;
+      }
+    };
+
+    // Show request status in the modal
+    function showRequestStatus(status, message, details = '') {
+      const statusDisplay = document.getElementById('request-status-display');
+      const statusIcon = document.getElementById('status-icon');
+      const statusMessage = document.getElementById('status-message');
+      const statusDetails = document.getElementById('status-details');
+      
+      statusDisplay.style.display = 'block';
+      
+      if (status === 'pending') {
+        statusDisplay.style.background = '#fff3cd';
+        statusDisplay.style.border = '2px solid #ffc107';
+        statusIcon.textContent = '⏳';
+        statusMessage.textContent = message || 'Request Pending';
+        statusMessage.style.color = '#856404';
+        statusDetails.textContent = details || 'Your request is being reviewed by our staff.';
+      } else if (status === 'approved') {
+        statusDisplay.style.background = '#d4edda';
+        statusDisplay.style.border = '2px solid #28a745';
+        statusIcon.textContent = '✅';
+        statusMessage.textContent = message || 'Order Confirmed!';
+        statusMessage.style.color = '#155724';
+        statusDetails.textContent = details || 'Your order has been confirmed and is being prepared.';
+      } else if (status === 'denied') {
+        statusDisplay.style.background = '#f8d7da';
+        statusDisplay.style.border = '2px solid #dc3545';
+        statusIcon.textContent = '❌';
+        statusMessage.textContent = message || 'Request Denied';
+        statusMessage.style.color = '#721c24';
+        statusDetails.textContent = details || 'Your request could not be processed. Please contact staff.';
+      }
+    }
+
+    // Start polling for request status
+    function startStatusPolling(requestId) {
+      // Poll immediately
+      checkRequestStatus(requestId);
+      
+      // Then poll every 3 seconds
+      state.statusPollInterval = setInterval(() => {
+        checkRequestStatus(requestId);
+      }, 3000);
+    }
+
+    // Stop status polling
+    function stopStatusPolling() {
+      if (state.statusPollInterval) {
+        clearInterval(state.statusPollInterval);
+        state.statusPollInterval = null;
+      }
+    }
+
+    // Check request status
+    async function checkRequestStatus(requestId) {
+      try {
+        const apiUrl = window.location.hostname === 'localhost'
+          ? `http://localhost:3001/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`
+          : `https://d7jbqla20m.execute-api.ap-south-1.amazonaws.com/$default/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`;
+
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const status = data.status;
+          
+          if (status !== state.requestStatus) {
+            state.requestStatus = status;
+            
+            if (status === 'approved') {
+              stopStatusPolling();
+              showRequestStatus('approved', 'Order Confirmed!', 
+                `Order ID: ${data.order_id || 'N/A'}. Your order is being prepared.`);
+              
+              // Show close button after 5 seconds
+              setTimeout(() => {
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'Close';
+                closeBtn.className = 'place-order-btn';
+                closeBtn.style.marginTop = '15px';
+                closeBtn.onclick = () => {
+                  closeCart();
+                  state.currentRequestId = null;
+                  state.requestStatus = null;
+                  placeOrderBtn.style.display = 'block';
+                };
+                document.getElementById('request-status-display').appendChild(closeBtn);
+              }, 5000);
+              
+            } else if (status === 'denied') {
+              stopStatusPolling();
+              showRequestStatus('denied', 'Request Denied', 
+                data.message || 'Your request could not be processed.');
+              
+              // Show retry button
+              setTimeout(() => {
+                const retryBtn = document.createElement('button');
+                retryBtn.textContent = 'Try Again';
+                retryBtn.className = 'place-order-btn';
+                retryBtn.style.marginTop = '15px';
+                retryBtn.onclick = () => {
+                  document.getElementById('request-status-display').style.display = 'none';
+                  placeOrderBtn.style.display = 'block';
+                  placeOrderBtn.textContent = 'Request Order';
+                  placeOrderBtn.disabled = false;
+                  state.currentRequestId = null;
+                  state.requestStatus = null;
+                };
+                document.getElementById('request-status-display').appendChild(retryBtn);
+              }, 2000);
+            } else {
+              // Still pending
+              showRequestStatus('pending', 'Request Pending', 
+                'Waiting for staff approval...');
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Status check error:", e);
+        // Don't show error to user, just log it
+      }
+    }
+
+    // Update closeCart to stop polling
+    const originalCloseCart = window.closeCart;
+    window.closeCart = () => {
+      stopStatusPolling();
+      originalCloseCart();
+      // Reset status display
+      document.getElementById('request-status-display').style.display = 'none';
+      placeOrderBtn.style.display = 'block';
+      state.currentRequestId = null;
+      state.requestStatus = null;
+    };
+
     // Sample menu data as fallback
     const sampleMenuData = {
       items: [
@@ -720,15 +1375,15 @@
           },
           mode: 'cors'
         });
-        console.log("response----------->",response);
+        console.log("response----------->", response);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         const parsed = typeof data === "string" ? JSON.parse(data) : data;
-        console.log("data----------->",data);
-        console.log("body----------->",data.body);
+        console.log("data----------->", data);
+        console.log("body----------->", data.body);
         if (parsed && parsed.items && parsed.items.length > 0) {
           renderItems(parsed.items);
           console.log("✅ Successfully loaded menu from API");
@@ -737,7 +1392,7 @@
         }
       } catch (error) {
         console.warn("⚠️ API fetch failed, using sample data:", error.message);
-        
+
         // Show a notice and use sample data
         const notice = document.createElement('div');
         notice.style.cssText = `
@@ -753,17 +1408,18 @@
           <strong>Demo Mode:</strong> Showing sample menu items. 
           <br><small>API connection failed - this is likely due to CORS restrictions.</small>
         `;
-        
+
         container.innerHTML = '';
         container.appendChild(notice);
-        
+
         // Use sample data
         renderItems(sampleMenuData.items);
       }
     }
-    
+
     // Load items when page loads
     loadItems();
   </script>
 </body>
+
 </html>
