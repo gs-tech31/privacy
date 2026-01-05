@@ -118,6 +118,37 @@
     </header>
 
     <!-- Menu Content -->
+    <!-- Search & Filter Bar -->
+    <div
+      class="sticky top-0 z-40 bg-gray-50/95 backdrop-blur-md pb-4 pt-2 -mx-4 px-4 sm:px-6 sm:-mx-6 lg:px-8 lg:-mx-8 transition-all duration-300"
+      id="search-filter-bar">
+      <div class="flex flex-col gap-3">
+        <!-- Search Input -->
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input type="text" id="search-input"
+            class="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+            placeholder="Search for dishes..." oninput="handleSearch(this.value)" />
+        </div>
+
+        <!-- Filters Row -->
+        <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" id="filter-chips-container">
+          <!-- Veg Filter Toggle -->
+          <button id="veg-filter-btn" onclick="toggleVegFilter()"
+            class="flex-shrink-0 px-4 py-2 rounded-full border border-gray-200 text-gray-700 bg-white font-medium text-sm transition-colors hover:bg-gray-50 flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full bg-green-600"></div> Veg Only
+          </button>
+          <!-- Dynamic Category Chips will be injected here -->
+        </div>
+      </div>
+    </div>
+
     <div id="items-container" class="space-y-12">
       <!-- Loading State -->
       <div class="flex flex-col items-center justify-center py-20 space-y-4">
@@ -243,6 +274,12 @@
     // State
     const state = {
       items: [],
+      allItems: [], // Store full list for filtering
+      filter: {
+        search: '',
+        category: 'All',
+        vegOnly: false
+      },
       cart: {},
       tenantId: '7001',
       tableId: null,
@@ -682,6 +719,82 @@
       } catch (e) { console.error(e); }
     }
 
+    // Filter Logic
+    function handleSearch(query) {
+      state.filter.search = query.toLowerCase();
+      applyFilters();
+    }
+
+    function toggleVegFilter() {
+      state.filter.vegOnly = !state.filter.vegOnly;
+      const btn = document.getElementById('veg-filter-btn');
+      if (state.filter.vegOnly) {
+        btn.classList.add('bg-green-50', 'border-green-500', 'text-green-800');
+        btn.classList.remove('border-gray-200', 'text-gray-700', 'bg-white');
+      } else {
+        btn.classList.remove('bg-green-50', 'border-green-500', 'text-green-800');
+        btn.classList.add('border-gray-200', 'text-gray-700', 'bg-white');
+      }
+      applyFilters();
+    }
+
+    function setCategoryFilter(category) {
+      state.filter.category = category;
+
+      // Update UI
+      document.querySelectorAll('.category-chip').forEach(chip => {
+        if (chip.dataset.category === category) {
+          chip.classList.add('bg-orange-500', 'text-white', 'border-orange-500');
+          chip.classList.remove('bg-white', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-50');
+        } else {
+          chip.classList.remove('bg-orange-500', 'text-white', 'border-orange-500');
+          chip.classList.add('bg-white', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-50');
+        }
+      });
+      applyFilters();
+    }
+
+    function applyFilters() {
+      let filtered = state.allItems.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(state.filter.search);
+        let isVeg = true;
+        if (state.filter.vegOnly) {
+          // Check for explicit is_veg property or infer from category/name for demo
+          if (item.hasOwnProperty('is_veg')) {
+            isVeg = item.is_veg;
+          } else {
+            // Heuristic for demo data lacking is_veg
+            const nonVegKeywords = ['chicken', 'mutton', 'fish', 'egg', 'prawn'];
+            const nameLower = item.name.toLowerCase();
+            if (nonVegKeywords.some(kw => nameLower.includes(kw))) isVeg = false;
+          }
+        }
+        const matchesCategory = state.filter.category === 'All' || item.category === state.filter.category;
+
+        return matchesSearch && isVeg && matchesCategory;
+      });
+      renderItems(filtered);
+    }
+
+    function renderFilters(items) {
+      const container = document.getElementById('filter-chips-container');
+      // Keep static filters (Veg)
+      while (container.children.length > 1) {
+        container.removeChild(container.lastChild);
+      }
+
+      const categories = ['All', ...new Set(items.map(i => i.category || 'Other'))];
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.textContent = cat;
+        btn.dataset.category = cat;
+        btn.className = `category-chip flex-shrink-0 px-4 py-2 rounded-full border font-medium text-sm transition-all ${cat === 'All' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`;
+        btn.onclick = () => setCategoryFilter(cat);
+        container.appendChild(btn);
+      });
+    }
+
     // Load Items Logic
     async function loadItems() {
       try {
@@ -695,7 +808,9 @@
         const parsed = typeof data === "string" ? JSON.parse(data) : data;
 
         if (parsed && parsed.items && parsed.items.length > 0) {
-          renderItems(parsed.items);
+          state.allItems = parsed.items;
+          renderFilters(state.allItems);
+          renderItems(state.allItems);
         } else {
           throw new Error('No items found');
         }
@@ -711,33 +826,35 @@
 
         const sampleItems = [
           // Starters
-          { name: "Paneer Tikka", item_code: "PT002", category: "Starters", price: 280, sold_out: false },
-          { name: "Hara Bhara Kabab", item_code: "HB001", category: "Starters", price: 240, sold_out: false },
-          { name: "Crispy Corn", item_code: "CC001", category: "Starters", price: 220, sold_out: false },
-          { name: "Veg Manchurian", item_code: "VM001", category: "Starters", price: 200, sold_out: false },
+          { name: "Paneer Tikka", item_code: "PT002", category: "Starters", price: 280, sold_out: false, is_veg: true },
+          { name: "Hara Bhara Kabab", item_code: "HB001", category: "Starters", price: 240, sold_out: false, is_veg: true },
+          { name: "Crispy Corn", item_code: "CC001", category: "Starters", price: 220, sold_out: false, is_veg: true },
+          { name: "Veg Manchurian", item_code: "VM001", category: "Starters", price: 200, sold_out: false, is_veg: true },
 
           // Main Course
-          { name: "Butter Chicken", item_code: "BC001", category: "Main Course", price: 320, sold_out: false, portion_enabled: true, portions_price: { "Half": { N: 180 }, "Full": { N: 320 } } },
-          { name: "Paneer Butter Masala", item_code: "PBM01", category: "Main Course", price: 290, sold_out: false },
-          { name: "Chicken Curry", item_code: "CC002", category: "Main Course", price: 300, sold_out: false },
-          { name: "Dal Tadka", item_code: "DT001", category: "Main Course", price: 180, sold_out: false },
-          { name: "Veg Kolhapuri", item_code: "VK001", category: "Main Course", price: 260, sold_out: false },
+          { name: "Butter Chicken", item_code: "BC001", category: "Main Course", price: 320, sold_out: false, is_veg: false, portion_enabled: true, portions_price: { "Half": { N: 180 }, "Full": { N: 320 } } },
+          { name: "Paneer Butter Masala", item_code: "PBM01", category: "Main Course", price: 290, sold_out: false, is_veg: true },
+          { name: "Chicken Curry", item_code: "CC002", category: "Main Course", price: 300, sold_out: false, is_veg: false },
+          { name: "Dal Tadka", item_code: "DT001", category: "Main Course", price: 180, sold_out: false, is_veg: true },
+          { name: "Veg Kolhapuri", item_code: "VK001", category: "Main Course", price: 260, sold_out: false, is_veg: true },
 
           // Breads
-          { name: "Garlic Naan", item_code: "GN003", category: "Breads", price: 60, sold_out: false },
-          { name: "Butter Roti", item_code: "BR001", category: "Breads", price: 35, sold_out: false },
-          { name: "Tandoori Roti", item_code: "TR001", category: "Breads", price: 25, sold_out: false },
-          { name: "Cheese Naan", item_code: "CN001", category: "Breads", price: 80, sold_out: false },
+          { name: "Garlic Naan", item_code: "GN003", category: "Breads", price: 60, sold_out: false, is_veg: true },
+          { name: "Butter Roti", item_code: "BR001", category: "Breads", price: 35, sold_out: false, is_veg: true },
+          { name: "Tandoori Roti", item_code: "TR001", category: "Breads", price: 25, sold_out: false, is_veg: true },
+          { name: "Cheese Naan", item_code: "CN001", category: "Breads", price: 80, sold_out: false, is_veg: true },
 
           // Rice
-          { name: "Jeera Rice", item_code: "JR001", category: "Rice", price: 140, sold_out: false },
-          { name: "Chicken Biryani", item_code: "CB001", category: "Rice", price: 350, sold_out: false, sold_out: true },
+          { name: "Jeera Rice", item_code: "JR001", category: "Rice", price: 140, sold_out: false, is_veg: true },
+          { name: "Chicken Biryani", item_code: "CB001", category: "Rice", price: 350, sold_out: false, sold_out: true, is_veg: false },
 
           // Desserts
-          { name: "Gulab Jamun", item_code: "GJ001", category: "Desserts", price: 80, sold_out: false },
-          { name: "Vanilla Ice Cream", item_code: "VIC01", category: "Desserts", price: 100, sold_out: false }
+          { name: "Gulab Jamun", item_code: "GJ001", category: "Desserts", price: 80, sold_out: false, is_veg: true },
+          { name: "Vanilla Ice Cream", item_code: "VIC01", category: "Desserts", price: 100, sold_out: false, is_veg: true }
         ];
-        renderItems(sampleItems);
+        state.allItems = sampleItems;
+        renderFilters(state.allItems);
+        renderItems(state.allItems);
       }
     }
 
