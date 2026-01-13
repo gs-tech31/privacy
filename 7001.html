@@ -287,7 +287,12 @@
       roomId: null,
       currentRequestId: null,
       requestStatus: null,
-      statusPollInterval: null
+      roomId: null,
+      currentRequestId: null,
+      requestStatus: null,
+      requestStatus: null,
+      statusPollInterval: null,
+      isOrderingEnabled: false // Default to false
     };
 
     // Parse URL Params
@@ -412,6 +417,7 @@
     }
 
     function getItemQtyControl(item) {
+      if (!state.isOrderingEnabled) return ''; // Hide controls if disabled
       const qty = state.cart[item.item_code]?.qty || 0;
       if (qty === 0) {
         return `<button onclick="addToCart('${item.item_code}')" class="bg-orange-50 text-orange-600 font-bold px-5 py-2 rounded-xl text-sm hover:bg-orange-500 hover:text-white transition-all active:scale-95 shadow-sm">ADD</button>`;
@@ -882,7 +888,51 @@
       });
     }
 
-    loadItems();
+    // Settings Logic
+    async function fetchSettings() {
+      try {
+        const apiUrl = window.location.hostname === 'localhost'
+          ? `http://localhost:3001/api/guest/settings?tenant_id=${state.tenantId}`
+          : `https://d7jbqla20m.execute-api.ap-south-1.amazonaws.com/$default/api/guest/settings?tenant_id=${state.tenantId}`;
+
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.settings) {
+            state.isOrderingEnabled = data.settings.guest_order_request === true;
+
+            if (!state.isOrderingEnabled) {
+              console.log("Online ordering disabled by restaurant.");
+
+              // Show global banner
+              const banner = document.createElement('div');
+              banner.className = "bg-red-50 text-red-600 p-4 rounded-xl text-center font-bold border border-red-100 mb-6 mx-auto max-w-2xl shadow-sm sticky top-20 z-30";
+              banner.innerHTML = '🚫 Online ordering is currently disabled. Please contact the waiter.';
+              const existingBanner = container.querySelector('.bg-blue-600'); // Room service banner
+              if (existingBanner) {
+                existingBanner.after(banner);
+              } else {
+                container.prepend(banner);
+              }
+
+              // Hide cart bar if visible
+              cartBar.classList.add('hidden');
+              cartBar.classList.remove('flex');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Retrying fetchSettings in 2s...", e);
+        // Retry once after delay if failed (e.g. network blip)
+        setTimeout(fetchSettings, 2000);
+      }
+    }
+
+    // Initialize
+    (async () => {
+      await fetchSettings();
+      loadItems();
+    })();
   </script>
 </body>
 
