@@ -901,6 +901,11 @@
           if (data.success && data.settings) {
             state.isOrderingEnabled = data.settings.guest_order_request === true;
 
+            // Re-render items to show/hide add buttons based on new setting
+            if (state.items.length > 0) {
+              renderItems(state.items);
+            }
+
             if (!state.isOrderingEnabled) {
               console.log("Online ordering disabled by restaurant.");
 
