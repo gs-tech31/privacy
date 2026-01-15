@@ -292,7 +292,7 @@
       requestStatus: null,
       requestStatus: null,
       statusPollInterval: null,
-      isOrderingEnabled: false // Default to false
+      isOrderingEnabled: true
     };
 
     // Parse URL Params
@@ -935,7 +935,7 @@
 
     // Initialize
     (async () => {
-      await fetchSettings();
+      // await fetchSettings();
       loadItems();
     })();
   </script>
