@@ -295,27 +295,38 @@
       isOrderingEnabled: true
     };
 
-    // Parse URL Params
+    // Parse URL Params & Normalize State
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tenant_id')) state.tenantId = urlParams.get('tenant_id');
-    if (urlParams.get('table_id')) state.tableId = urlParams.get('table_id');
-    if (urlParams.get('hall_id')) state.hallId = urlParams.get('hall_id');
-    if (urlParams.get('room_id')) state.roomId = urlParams.get('room_id');
+    const tenantIdParam = urlParams.get('tenant_id');
+    const tableIdParam = urlParams.get('table_id');
+    const hallIdParam = urlParams.get('hall_id');
+    const roomIdParam = urlParams.get('room_id');
 
-    async function handleRoomEntry() {
-      if (state.roomId && !state.tableId) {
-        console.log("Room Entry Detected.");
-        state.tableId = state.roomId;
-        state.hallId = "ROOM_SERVICE";
+    if (tenantIdParam) state.tenantId = tenantIdParam;
 
-        // Prepend banner
-        const banner = document.createElement('div');
-        banner.className = "bg-blue-600 text-white p-3 rounded-xl text-center font-bold mb-6 shadow-lg shadow-blue-500/30 mx-auto max-w-2xl";
-        banner.innerHTML = "🛏️ You are ordering for Room Service";
-        container.prepend(banner);
-      }
+    // Logic: Room QR vs Dining QR
+    if (roomIdParam) {
+      // Case 1: Room Service
+      console.log("Room Entry Detected via room_id");
+      state.tableId = roomIdParam;       // Room Number acts as Table ID
+      state.hallId = "ROOM_SERVICE";     // Hardcoded Hall ID for Rooms
+      state.isRoom = true;               // Flag for UI customization (optional)
+      state.roomId = roomIdParam;
+
+      // Prepend banner for Room Service
+      const banner = document.createElement('div');
+      banner.className = "bg-blue-600 text-white p-3 rounded-xl text-center font-bold mb-6 shadow-lg shadow-blue-500/30 mx-auto max-w-2xl";
+      banner.innerHTML = "🛏️ You are ordering for Room Service";
+      container.prepend(banner);
+
+    } else if (tableIdParam && hallIdParam) {
+      // Case 2: Dining Table (Standard)
+      state.tableId = tableIdParam;
+      state.hallId = hallIdParam;
+      state.isRoom = false; // Explicitly not a room
     }
-    handleRoomEntry();
+
+    // (Test defaults removed)
 
     // Missing Params Warning
     if (!state.tableId && !state.hallId && !state.roomId) {
@@ -529,7 +540,9 @@
 
     // Submission Logic
     window.submitOrder = async () => {
-      if (!state.tableId || !state.hallId) {
+      // Relaxed validation: Allow if tableId OR hallId is present.
+      // Backend will attempt to lookup Hall from Table ID if Hall ID is missing.
+      if (!state.tableId) {
         alert("⚠️ Please scan the QR code on your table.");
         return;
       }
