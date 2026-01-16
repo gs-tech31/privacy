@@ -596,7 +596,7 @@
             try {
                 const apiUrl = window.location.hostname === 'localhost'
                     ? 'http://localhost:3001/api/guest/order/request'
-                    : 'https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/$default/api/guest/order/request';
+                    : 'https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request';
 
                 const res = await fetch(apiUrl, {
                     method: 'POST',
@@ -693,7 +693,7 @@
             try {
                 const apiUrl = window.location.hostname === 'localhost'
                     ? `http://localhost:3001/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`
-                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/$default/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`;
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`;
 
                 const res = await fetch(apiUrl);
                 const data = await res.json();
@@ -839,7 +839,7 @@
             try {
                 const apiUrl = window.location.hostname === 'localhost'
                     ? `http://localhost:3001/api/guest/menu?tenant_id=${state.tenantId}`
-                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/$default/api/guest/menu?tenant_id=${state.tenantId}`;
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/menu?tenant_id=${state.tenantId}`;
 
                 const res = await fetch(apiUrl);
                 const data = await res.json();
