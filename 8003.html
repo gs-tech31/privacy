@@ -907,9 +907,9 @@
         // Settings Logic
         async function fetchSettings() {
             try {
-                const apiUrl = window.location.hostname === 'localhost'
-                    ? `http://localhost:3001/api/get-items?tenant_id=${state.tenantId}`
-                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/get-items?tenant_id=${state.tenantId}`;
+                 const apiUrl = window.location.hostname === 'localhost'
+                    ? `http://localhost:3001/api/guest/settings?tenant_id=${state.tenantId}`
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/settings?tenant_id=${state.tenantId}`;
 
                 const res = await fetch(apiUrl);
                 if (res.ok) {
