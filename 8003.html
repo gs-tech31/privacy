@@ -838,8 +838,8 @@
             // NOTE: Using DigiKhana API to fetch real items for this tenant
             try {
                 const apiUrl = window.location.hostname === 'localhost'
-                    ? `http://localhost:3001/api/guest/menu?tenant_id=${state.tenantId}`
-                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/menu?tenant_id=${state.tenantId}`;
+                    ? `http://localhost:3001/api/get-items?tenant_id=${state.tenantId}`
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/get-items?tenant_id=${state.tenantId}`;
 
                 const res = await fetch(apiUrl);
                 const data = await res.json();
