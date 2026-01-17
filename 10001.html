@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DigiKhana - Premium Restaurant Menu</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+
+    <!-- Fonts & Tailwind -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Quicksand"', 'sans-serif'],
+                    },
+                    colors: {
+                        orange: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            200: '#fed7aa',
+                            300: '#fdba74',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                            800: '#9a3412',
+                            900: '#7c2d12',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f9fafb;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-24 relative overflow-x-hidden">
+
+    <!-- Background Elements -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div class="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-orange-200/20 rounded-full blur-[100px]"></div>
+        <div class="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-blue-200/10 rounded-full blur-[100px]"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+
+        <!-- Header -->
+        <header class="text-center mb-10 animate-fade-in">
+            <div class="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-4">
+                <span class="text-3xl">🍽️</span>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-display tracking-tight">Hotel Sai Garden
+            </h1>
+            <p class="text-gray-500 font-medium text-sm tracking-wide uppercase">Powered By DigiKhana</p>
+        </header>
+
+        <!-- Menu Content -->
+        <!-- Search & Filter Bar -->
+        <div class="sticky top-0 z-40 bg-gray-50/95 backdrop-blur-md pb-4 pt-2 -mx-4 px-4 sm:px-6 sm:-mx-6 lg:px-8 lg:-mx-8 transition-all duration-300"
+            id="search-filter-bar">
+            <div class="flex flex-col gap-3">
+                <!-- Search Input -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="search-input"
+                        class="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+                        placeholder="Search for dishes..." oninput="handleSearch(this.value)" />
+                </div>
+
+                <!-- Filters Row -->
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" id="filter-chips-container">
+                    <!-- Veg Filter Toggle -->
+                    <button id="veg-filter-btn" onclick="toggleVegFilter()"
+                        class="flex-shrink-0 px-4 py-2 rounded-full border border-gray-200 text-gray-700 bg-white font-medium text-sm transition-colors hover:bg-gray-50 flex items-center gap-1">
+                        <div class="w-2 h-2 rounded-full bg-green-600"></div> Veg Only
+                    </button>
+                    <!-- Dynamic Category Chips will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="items-container" class="space-y-12">
+            <!-- Loading State -->
+            <div class="flex flex-col items-center justify-center py-20 space-y-4">
+                <div class="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+                <p class="text-gray-500 font-medium animate-pulse">Loading delicious items...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Cart Floating Bar -->
+    <div id="cart-bar" onclick="openCart()"
+        class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] max-w-lg glass-panel bg-white/90 shadow-2xl rounded-full p-2 z-50 cursor-pointer transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] border border-orange-100 ring-4 ring-orange-500/5 items-center justify-between pr-4">
+        <div class="flex items-center gap-4 pl-2">
+            <div
+                class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg shadow-orange-500/30 cart-count">
+                0</div>
+            <div class="flex flex-col">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</span>
+                <span class="text-lg font-extrabold text-gray-900 cart-total">₹0</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-orange-600 font-bold text-sm bg-orange-50 px-4 py-2 rounded-full">
+            View Cart
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Cart Modal Overlay -->
+    <!-- Cart Modal Overlay -->
+    <div id="cart-modal"
+        class="fixed inset-0 z-[60] hidden flex flex-col justify-end md:justify-center md:items-center pointer-events-none">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onclick="closeCart()"></div>
+
+        <!-- Modal Content -->
+        <div
+            class="relative w-full md:w-[95%] md:max-w-md bg-white rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] animate-slide-up transform transition-transform overflow-hidden pointer-events-auto">
+
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-white flex-shrink-0 z-10">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 font-display">Your Order</h2>
+                    <p class="text-sm text-gray-500 mt-1">Review your items</p>
+                </div>
+                <button onclick="closeCart()" class="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Cart Items -->
+                <div id="cart-items-list" class="space-y-4"></div>
+
+                <!-- Guest Form -->
+                <div class="pt-6 border-t border-gray-100 space-y-4">
+                    <h3 class="font-bold text-gray-900">Guest Details <span
+                            class="font-normal text-gray-400 text-sm">(Optional)</span></h3>
+
+                    <div class="space-y-3">
+                        <div>
+                            <input type="text" id="guest-name" placeholder="Your Name"
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium transition-all">
+                        </div>
+                        <div>
+                            <input type="tel" id="guest-phone" placeholder="Phone Number"
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium transition-all">
+                        </div>
+                        <div>
+                            <textarea id="guest-notes" placeholder="Any special requests or dietary requirements..."
+                                rows="2"
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium transition-all resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Display -->
+                <div id="request-status-display" class="hidden p-4 rounded-xl text-center space-y-2">
+                    <div id="status-icon" class="text-4xl mb-2"></div>
+                    <div id="status-message" class="font-bold text-lg"></div>
+                    <div id="status-details" class="text-sm opacity-80"></div>
+                </div>
+
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
+                <button id="place-order-btn" onclick="submitOrder()"
+                    class="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-500/30 transition-all transform active:scale-[0.98]">
+                    Request Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Selection Modal -->
+    <div id="table-selection-modal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
+        <div class="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-slide-up">
+            <h3 class="text-xl font-bold text-gray-900 text-center mb-2">Select Your Table</h3>
+            <p class="text-gray-500 text-center text-sm mb-6">You scanned a Room QR. Please confirm your table.</p>
+            <div id="table-list-container"
+                class="grid grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar p-1">
+                <!-- Tables injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Logic starts here (Copied & Adapted) ---
+
+        // Utils for creating elements logic
+        const container = document.getElementById('items-container');
+        const cartBar = document.getElementById('cart-bar');
+        const cartModal = document.getElementById('cart-modal');
+        const cartItemsList = document.getElementById('cart-items-list');
+        const placeOrderBtn = document.getElementById('place-order-btn');
+
+        // State
+        const state = {
+            items: [],
+            allItems: [], // Store full list for filtering
+            filter: {
+                search: '',
+                category: 'All',
+                vegOnly: false
+            },
+            cart: {},
+            tenantId: '10001',
+            tableId: null,
+            hallId: null,
+            roomId: null,
+            currentRequestId: null,
+            requestStatus: null,
+            roomId: null,
+            currentRequestId: null,
+            requestStatus: null,
+            requestStatus: null,
+            statusPollInterval: null,
+            isOrderingEnabled: true
+        };
+
+        // Parse URL Params & Normalize State
+        const urlParams = new URLSearchParams(window.location.search);
+        const tenantIdParam = urlParams.get('tenant_id');
+        const tableIdParam = urlParams.get('table_id');
+        const hallIdParam = urlParams.get('hall_id');
+        const roomIdParam = urlParams.get('room_id');
+
+        if (tenantIdParam) state.tenantId = tenantIdParam;
+
+        // Logic: Room QR vs Dining QR
+        if (roomIdParam) {
+            // Case 1: Room Service
+            console.log("Room Entry Detected via room_id");
+            state.tableId = roomIdParam;       // Room Number acts as Table ID
+            state.hallId = "ROOM_SERVICE";     // Hardcoded Hall ID for Rooms
+            state.isRoom = true;               // Flag for UI customization (optional)
+            state.roomId = roomIdParam;
+
+            // Prepend banner for Room Service
+            const banner = document.createElement('div');
+            banner.className = "bg-blue-600 text-white p-3 rounded-xl text-center font-bold mb-6 shadow-lg shadow-blue-500/30 mx-auto max-w-2xl";
+            banner.innerHTML = "🛏️ You are ordering for Room Service";
+            container.prepend(banner);
+
+        } else if (tableIdParam && hallIdParam) {
+            // Case 2: Dining Table (Standard)
+            state.tableId = tableIdParam;
+            state.hallId = hallIdParam;
+            state.isRoom = false; // Explicitly not a room
+        }
+
+        // (Test defaults removed)
+
+        // Missing Params Warning
+        if (!state.tableId && !state.hallId && !state.roomId) {
+            const warning = document.createElement('div');
+            warning.className = "bg-red-50 text-red-600 p-4 rounded-xl text-center font-medium border border-red-100 mb-8 mx-auto max-w-2xl";
+            warning.innerHTML = '⚠️ Please scan the QR code on your table to access the menu.';
+            container.prepend(warning);
+        }
+
+        function groupItemsByCategory(items) {
+            const grouped = {};
+            items.forEach(item => {
+                const category = item.category || 'Other';
+                if (!grouped[category]) grouped[category] = [];
+                grouped[category].push(item);
+            });
+            return grouped;
+        }
+
+        function renderItems(items) {
+            state.items = items;
+            container.innerHTML = "";
+
+            if (!items || !items.length) {
+                container.innerHTML = '<div class="text-center py-20 text-gray-400 text-lg">No menu items available.</div>';
+                return;
+            }
+
+            const groupedItems = groupItemsByCategory(items);
+
+            Object.entries(groupedItems).forEach(([category, categoryItems]) => {
+                const section = document.createElement('div');
+                section.className = 'w-full';
+
+                const title = document.createElement('h2');
+                title.className = 'text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3 before:content-[""] before:w-1 before:h-6 before:bg-orange-500 before:rounded-full pl-2';
+                title.textContent = category;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
+
+                categoryItems.forEach(item => {
+                    const isSoldOut = item.sold_out;
+                    const itemCard = document.createElement('div');
+                    itemCard.className = `bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 flex flex-col justify-between group relative overflow-hidden ${isSoldOut ? 'opacity-60 grayscale' : ''}`;
+
+                    // Sold out overlay
+                    const soldOutBadge = isSoldOut ? '<div class="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full z-10">SOLD OUT</div>' : '';
+
+                    // Quantity Control HTML
+                    const qtyControl = !isSoldOut ? getItemQtyControl(item) : '';
+
+                    // Portions HTML
+                    let portionsHTML = '';
+                    if (item.portion_enabled && item.portions_price) {
+                        portionsHTML = `
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-2">Portions</p>
+                        <div class="grid grid-cols-2 gap-2">
+                             ${Object.entries(item.portions_price).map(([portion, priceObj]) => `
+                                <div class="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+                                   <div class="text-xs font-semibold text-gray-600">${portion}</div>
+                                   <div class="text-xs font-bold text-orange-600">₹${priceObj.N}</div>
+                                </div>
+                             `).join('')}
+                        </div>
+                    </div>
+                `;
+                    }
+
+                    itemCard.innerHTML = `
+                ${soldOutBadge}
+                <div class="flex justify-between items-start mb-2">
+                    <div class="pr-2">
+                        <div class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-orange-600 transition-colors">${item.name || 'Unnamed'}</div>
+                        <div class="inline-flex items-center gap-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 uppercase tracking-wider">#${item.item_code}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 uppercase tracking-wider">${item.category}</span>
+                        </div>
+                    </div>
+                    <div class="font-display font-extrabold text-xl text-gray-900">₹${item.price}</div>
+                </div>
+                
+                <div class="mt-auto">
+                    ${portionsHTML}
+                    <div class="mt-4 flex justify-end">
+                       ${qtyControl}
+                    </div>
+                </div>
+            `;
+                    grid.appendChild(itemCard);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+            updateCartUI();
+        }
+
+        function getItemQtyControl(item) {
+            if (!state.isOrderingEnabled) return ''; // Hide controls if disabled
+            const qty = state.cart[item.item_code]?.qty || 0;
+            if (qty === 0) {
+                return `<button onclick="addToCart('${item.item_code}')" class="bg-orange-50 text-orange-600 font-bold px-5 py-2 rounded-xl text-sm hover:bg-orange-500 hover:text-white transition-all active:scale-95 shadow-sm">ADD</button>`;
+            } else {
+                return `
+            <div class="flex items-center bg-gray-900 text-white rounded-xl p-1 shadow-lg shadow-gray-200">
+                <button onclick="removeFromCart('${item.item_code}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 active:scale-90 transition-all font-bold text-lg">-</button>
+                <span class="w-8 text-center font-bold text-sm">${qty}</span>
+                <button onclick="addToCart('${item.item_code}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-90 transition-all font-bold text-lg">+</button>
+            </div>
+            `;
+            }
+        }
+
+        window.addToCart = (itemCode) => {
+            const item = state.items.find(i => i.item_code === itemCode);
+            if (!item) return;
+            if (!state.cart[itemCode]) state.cart[itemCode] = { qty: 0, item: item };
+            state.cart[itemCode].qty++;
+            renderItems(state.items);
+            // Only update cart list if modal is open to avoid flicker/perf issues
+            if (cartModal.style.display !== 'none' && !cartModal.classList.contains('hidden')) {
+                renderCartItems();
+            }
+            updateCartUI();
+        };
+
+        window.removeFromCart = (itemCode) => {
+            if (state.cart[itemCode]) {
+                state.cart[itemCode].qty--;
+                if (state.cart[itemCode].qty <= 0) delete state.cart[itemCode];
+            }
+            renderItems(state.items);
+            if (cartModal.style.display !== 'none' && !cartModal.classList.contains('hidden')) {
+                renderCartItems();
+            }
+            updateCartUI();
+        };
+
+        function updateCartUI() {
+            const totalQty = Object.values(state.cart).reduce((acc, curr) => acc + curr.qty, 0);
+            const totalPrice = Object.values(state.cart).reduce((acc, curr) => acc + (curr.qty * curr.item.price), 0);
+
+            document.querySelectorAll('.cart-count').forEach(el => el.textContent = totalQty);
+            document.querySelectorAll('.cart-total').forEach(el => el.textContent = `₹${totalPrice}`);
+
+            if (totalQty > 0) {
+                cartBar.classList.remove('hidden');
+                cartBar.classList.add('flex');
+            } else {
+                cartBar.classList.add('hidden');
+                cartBar.classList.remove('flex');
+                closeCart();
+            }
+        }
+
+        // Modal Logic
+        window.openCart = () => {
+            cartModal.classList.remove('hidden');
+            renderCartItems();
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeCart = () => {
+            cartModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            stopStatusPolling(); // Also stop polling if user closes cart explicitly (optional, matching original)
+            // Note: original logic stopped polling on close. We might want to keep it running in background? 
+            // Original: stopped. We keep it consistent.
+
+            // Reset status UI if we were viewing status
+            if (state.requestStatus) {
+                const statusDisplay = document.getElementById('request-status-display');
+                statusDisplay.classList.add('hidden');
+                placeOrderBtn.style.display = 'block';
+                state.currentRequestId = null;
+                state.requestStatus = null;
+            }
+        };
+
+        function renderCartItems() {
+            cartItemsList.innerHTML = "";
+            const cartEntries = Object.entries(state.cart);
+
+            if (cartEntries.length === 0) {
+                cartItemsList.innerHTML = "<div class='text-center py-10 text-gray-400'>Your cart is empty</div>";
+                return;
+            }
+
+            cartEntries.forEach(([code, { qty, item }]) => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between py-2 border-b border-gray-50 last:border-0";
+                row.innerHTML = `
+                <div class="flex-1 pr-4">
+                    <div class="font-bold text-gray-900">${item.name}</div>
+                    <div class="text-orange-600 font-bold text-sm">₹${item.price * qty}</div>
+                </div>
+                <!-- Mini Qty Control -->
+                <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                    <button onclick="removeFromCart('${code}')" class="w-7 h-7 flex items-center justify-center rounded-md bg-white shadow-sm font-bold text-gray-600">-</button>
+                    <span class="w-8 text-center font-bold text-sm text-gray-800">${qty}</span>
+                    <button onclick="addToCart('${code}')" class="w-7 h-7 flex items-center justify-center rounded-md bg-gray-900 text-white shadow-sm font-bold">+</button>
+                </div>
+            `;
+                cartItemsList.appendChild(row);
+            });
+        }
+
+        // Submission Logic
+        window.submitOrder = async () => {
+            // Relaxed validation: Allow if tableId OR hallId is present.
+            // Backend will attempt to lookup Hall from Table ID if Hall ID is missing.
+            if (!state.tableId) {
+                alert("⚠️ Please scan the QR code on your table.");
+                return;
+            }
+
+            const totalQty = Object.values(state.cart).reduce((acc, curr) => acc + curr.qty, 0);
+            if (totalQty === 0) {
+                alert("Your cart is empty.");
+                return;
+            }
+
+            placeOrderBtn.innerHTML = '<span class="animate-pulse">Submitting Request...</span>';
+            placeOrderBtn.disabled = true;
+
+            const statusDisplay = document.getElementById('request-status-display');
+            statusDisplay.classList.add('hidden');
+
+            // Prepare Payload (Identical to original)
+            const itemsPayload = Object.values(state.cart).map(c => ({
+                item_code: c.item.item_code,
+                name: c.item.name,
+                price: c.item.price,
+                quantity: c.qty,
+                category: c.item.category,
+                group: c.item.group,
+                group_id: c.item.group_id,
+                category_id: c.item.category_id,
+                subcategory_id: c.item.subcategory_id,
+                is_cgst_applicable: c.item.is_cgst_applicable || false,
+                is_sgst_applicable: c.item.is_sgst_applicable || false,
+                notes: c.item.notes || [],
+            }));
+
+            const guestName = document.getElementById('guest-name').value.trim() || null;
+            const guestPhone = document.getElementById('guest-phone').value.trim() || null;
+            const guestNotes = document.getElementById('guest-notes').value.trim() || null;
+
+            const payload = {
+                tenant_id: state.tenantId,
+                table_id: state.tableId,
+                hall_id: state.hallId,
+                items: itemsPayload,
+                guest_name: guestName,
+                guest_phone: guestPhone,
+                guest_notes: guestNotes,
+            };
+
+            try {
+                const apiUrl = window.location.hostname === 'localhost'
+                    ? 'http://localhost:3001/api/guest/order/request'
+                    : 'https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request';
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    state.currentRequestId = data.request_id;
+                    state.requestStatus = 'pending';
+
+                    showRequestStatus('pending', 'Order request submitted!', 'Waiting for staff approval...');
+
+                    state.cart = {};
+                    updateCartUI();
+
+                    // Clear fields
+                    document.getElementById('guest-name').value = '';
+                    document.getElementById('guest-phone').value = '';
+                    document.getElementById('guest-notes').value = '';
+
+                    placeOrderBtn.style.display = 'none'; // Hide button instead of disable
+                    startStatusPolling(data.request_id);
+                    renderItems(state.items); // Reset UI of items (remove qty)
+                } else {
+                    let errorMsg = data.error || data.message || "Failed to submit request";
+                    if (data.not_available?.length) errorMsg += `\nSold Out: ${data.not_available.join(', ')}`;
+                    if (data.name_changed?.length) errorMsg += `\nName changes: ${data.name_changed.join(', ')}`;
+                    if (data.price_changed?.length) errorMsg += `\nPrice changes: ${data.price_changed.join(', ')}`;
+
+                    alert(errorMsg);
+                    resetSubmitBtn();
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Network Error: Could not send request.");
+                resetSubmitBtn();
+            }
+        };
+
+        function resetSubmitBtn() {
+            placeOrderBtn.textContent = "Request Order";
+            placeOrderBtn.disabled = false;
+            placeOrderBtn.style.display = 'block';
+        }
+
+        function showRequestStatus(status, message, details = '') {
+            const statusDisplay = document.getElementById('request-status-display');
+            const statusIcon = document.getElementById('status-icon');
+            const statusMessage = document.getElementById('status-message');
+            const statusDetails = document.getElementById('status-details');
+
+            statusDisplay.classList.remove('hidden');
+            statusDisplay.className = "p-6 rounded-2xl text-center space-y-3 mb-4 transition-all animate-fade-in";
+
+            statusIcon.textContent = '';
+
+            if (status === 'pending') {
+                statusDisplay.classList.add('bg-yellow-50', 'border', 'border-yellow-200');
+                statusIcon.textContent = '⏳';
+                statusMessage.className = "text-xl font-bold text-yellow-800";
+                statusDetails.className = "text-yellow-700 font-medium";
+            } else if (status === 'approved') {
+                statusDisplay.classList.add('bg-green-50', 'border', 'border-green-200');
+                statusIcon.textContent = '✅';
+                statusMessage.className = "text-xl font-bold text-green-800";
+                statusDetails.className = "text-green-700 font-medium";
+            } else if (status === 'denied') {
+                statusDisplay.classList.add('bg-red-50', 'border', 'border-red-200');
+                statusIcon.textContent = '❌';
+                statusMessage.className = "text-xl font-bold text-red-800";
+                statusDetails.className = "text-red-700 font-medium";
+            }
+
+            statusMessage.textContent = message;
+            statusDetails.textContent = details;
+        }
+
+        function startStatusPolling(requestId) {
+            checkRequestStatus(requestId);
+            state.statusPollInterval = setInterval(() => checkRequestStatus(requestId), 3000);
+        }
+
+        function stopStatusPolling() {
+            if (state.statusPollInterval) {
+                clearInterval(state.statusPollInterval);
+                state.statusPollInterval = null;
+            }
+        }
+
+        async function checkRequestStatus(requestId) {
+            try {
+                const apiUrl = window.location.hostname === 'localhost'
+                    ? `http://localhost:3001/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/request/status?request_id=${requestId}&tenant_id=${state.tenantId}`;
+
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    const status = data.status;
+                    if (status !== state.requestStatus) {
+                        state.requestStatus = status;
+
+                        if (status === 'approved') {
+                            stopStatusPolling();
+                            showRequestStatus('approved', 'Order Confirmed!', `Order ID: ${data.order_id || 'N/A'}. Preparation started.`);
+
+                            // Add close button dynamically
+                            setTimeout(() => {
+                                const closeBtn = document.createElement('button');
+                                closeBtn.textContent = 'Close & Start New Order';
+                                closeBtn.className = "mt-4 px-6 py-2 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/30";
+                                closeBtn.onclick = () => {
+                                    closeCart();
+                                    state.currentRequestId = null;
+                                    state.requestStatus = null;
+                                };
+                                document.getElementById('request-status-display').appendChild(closeBtn);
+                            }, 2000);
+
+                        } else if (status === 'denied') {
+                            stopStatusPolling();
+                            showRequestStatus('denied', 'Request Denied', data.message || 'Please contact staff.');
+                            // Retry button
+                            setTimeout(() => {
+                                const retryBtn = document.createElement('button');
+                                retryBtn.textContent = 'Cancel & Modify';
+                                retryBtn.className = "mt-4 px-6 py-2 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-500/30";
+                                retryBtn.onclick = () => {
+                                    document.getElementById('request-status-display').classList.add('hidden');
+                                    resetSubmitBtn();
+                                    state.currentRequestId = null;
+                                    state.requestStatus = null;
+                                };
+                                document.getElementById('request-status-display').appendChild(retryBtn);
+                            }, 1000);
+                        }
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // Filter Logic
+        function handleSearch(query) {
+            state.filter.search = query.toLowerCase();
+            applyFilters();
+        }
+
+        function toggleVegFilter() {
+            state.filter.vegOnly = !state.filter.vegOnly;
+            const btn = document.getElementById('veg-filter-btn');
+            if (state.filter.vegOnly) {
+                btn.classList.add('bg-green-50', 'border-green-500', 'text-green-800');
+                btn.classList.remove('border-gray-200', 'text-gray-700', 'bg-white');
+            } else {
+                btn.classList.remove('bg-green-50', 'border-green-500', 'text-green-800');
+                btn.classList.add('border-gray-200', 'text-gray-700', 'bg-white');
+            }
+            applyFilters();
+        }
+
+        function setCategoryFilter(category) {
+            state.filter.category = category;
+
+            // Update UI
+            document.querySelectorAll('.category-chip').forEach(chip => {
+                if (chip.dataset.category === category) {
+                    chip.classList.add('bg-orange-500', 'text-white', 'border-orange-500');
+                    chip.classList.remove('bg-white', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-50');
+                } else {
+                    chip.classList.remove('bg-orange-500', 'text-white', 'border-orange-500');
+                    chip.classList.add('bg-white', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-50');
+                }
+            });
+            applyFilters();
+        }
+
+        function applyFilters() {
+            let filtered = state.allItems.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(state.filter.search);
+                let isVeg = true;
+                if (state.filter.vegOnly) {
+                    // Check for explicit is_veg property or infer from category/name for demo
+                    if (item.hasOwnProperty('is_veg')) {
+                        isVeg = item.is_veg;
+                    } else {
+                        // Heuristic for demo data lacking is_veg
+                        const nonVegKeywords = ['chicken', 'mutton', 'fish', 'egg', 'prawn'];
+                        const nameLower = item.name.toLowerCase();
+                        if (nonVegKeywords.some(kw => nameLower.includes(kw))) isVeg = false;
+                    }
+                }
+                const matchesCategory = state.filter.category === 'All' || item.category === state.filter.category;
+
+                return matchesSearch && isVeg && matchesCategory;
+            });
+            renderItems(filtered);
+        }
+
+        function renderFilters(items) {
+            const container = document.getElementById('filter-chips-container');
+            // Keep static filters (Veg)
+            while (container.children.length > 1) {
+                container.removeChild(container.lastChild);
+            }
+
+            const categories = ['All', ...new Set(items.map(i => i.category || 'Other'))];
+
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.textContent = cat;
+                btn.dataset.category = cat;
+                btn.className = `category-chip flex-shrink-0 px-4 py-2 rounded-full border font-medium text-sm transition-all ${cat === 'All' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`;
+                btn.onclick = () => setCategoryFilter(cat);
+                container.appendChild(btn);
+            });
+        }
+
+        // Load Items Logic
+        async function loadItems() {
+            try {
+                const response = await fetch("https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/get-items?tenant_id=10001", {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                const parsed = typeof data === "string" ? JSON.parse(data) : data;
+
+                if (parsed && parsed.items && parsed.items.length > 0) {
+                    state.allItems = parsed.items;
+                    renderFilters(state.allItems);
+                    renderItems(state.allItems);
+                } else {
+                    throw new Error('No items found');
+                }
+            } catch (error) {
+                console.warn("Using sample data due to:", error.message);
+                // Sample Data Fallback
+                // Banner
+                const notice = document.createElement('div');
+                notice.className = "bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-6 rounded shadow-sm mx-auto max-w-2xl text-center";
+                notice.innerHTML = '<p class="font-bold">Demo Mode Active</p><p class="text-sm">Could not load live menu (network/CORS issue). Showing sample items.</p>';
+                container.innerHTML = '';
+                container.appendChild(notice);
+
+                const sampleItems = [
+                    // Starters
+                    { name: "Paneer Tikka", item_code: "PT002", category: "Starters", price: 280, sold_out: false, is_veg: true },
+                    { name: "Hara Bhara Kabab", item_code: "HB001", category: "Starters", price: 240, sold_out: false, is_veg: true },
+                    { name: "Crispy Corn", item_code: "CC001", category: "Starters", price: 220, sold_out: false, is_veg: true },
+                    { name: "Veg Manchurian", item_code: "VM001", category: "Starters", price: 200, sold_out: false, is_veg: true },
+
+                    // Main Course
+                    { name: "Butter Chicken", item_code: "BC001", category: "Main Course", price: 320, sold_out: false, is_veg: false, portion_enabled: true, portions_price: { "Half": { N: 180 }, "Full": { N: 320 } } },
+                    { name: "Paneer Butter Masala", item_code: "PBM01", category: "Main Course", price: 290, sold_out: false, is_veg: true },
+                    { name: "Chicken Curry", item_code: "CC002", category: "Main Course", price: 300, sold_out: false, is_veg: false },
+                    { name: "Dal Tadka", item_code: "DT001", category: "Main Course", price: 180, sold_out: false, is_veg: true },
+                    { name: "Veg Kolhapuri", item_code: "VK001", category: "Main Course", price: 260, sold_out: false, is_veg: true },
+
+                    // Breads
+                    { name: "Garlic Naan", item_code: "GN003", category: "Breads", price: 60, sold_out: false, is_veg: true },
+                    { name: "Butter Roti", item_code: "BR001", category: "Breads", price: 35, sold_out: false, is_veg: true },
+                    { name: "Tandoori Roti", item_code: "TR001", category: "Breads", price: 25, sold_out: false, is_veg: true },
+                    { name: "Cheese Naan", item_code: "CN001", category: "Breads", price: 80, sold_out: false, is_veg: true },
+
+                    // Rice
+                    { name: "Jeera Rice", item_code: "JR001", category: "Rice", price: 140, sold_out: false, is_veg: true },
+                    { name: "Chicken Biryani", item_code: "CB001", category: "Rice", price: 350, sold_out: false, sold_out: true, is_veg: false },
+
+                    // Desserts
+                    { name: "Gulab Jamun", item_code: "GJ001", category: "Desserts", price: 80, sold_out: false, is_veg: true },
+                    { name: "Vanilla Ice Cream", item_code: "VIC01", category: "Desserts", price: 100, sold_out: false, is_veg: true }
+                ];
+                state.allItems = sampleItems;
+                renderFilters(state.allItems);
+                renderItems(state.allItems);
+            }
+        }
+
+        // Table Selection Logic (Room Only)
+        // Preserving the original Table Selection Modal logic for Room QR scans
+        function showTableSelectionModal(tables) {
+            const modal = document.getElementById('table-selection-modal');
+            const container = document.getElementById('table-list-container');
+            container.innerHTML = "";
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            tables.forEach(tableId => {
+                const btn = document.createElement('button');
+                btn.textContent = tableId;
+                btn.className = "p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-orange-500 hover:text-white transition-all";
+                btn.onclick = () => {
+                    state.tableId = tableId;
+                    if (!state.hallId) state.hallId = state.roomId;
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // Settings Logic
+        async function fetchSettings() {
+            try {
+                const apiUrl = window.location.hostname === 'localhost'
+                    ? `http://localhost:3001/api/guest/settings?tenant_id=${state.tenantId}`
+                    : `https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/settings?tenant_id=${state.tenantId}`;
+
+                const res = await fetch(apiUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.settings) {
+                        state.isOrderingEnabled = data.settings.guest_order_request === true;
+
+                        // Re-render items to show/hide add buttons based on new setting
+                        if (state.items.length > 0) {
+                            renderItems(state.items);
+                        }
+
+                        if (!state.isOrderingEnabled) {
+                            console.log("Online ordering disabled by restaurant.");
+
+                            // Show global banner
+                            const banner = document.createElement('div');
+                            banner.className = "bg-red-50 text-red-600 p-4 rounded-xl text-center font-bold border border-red-100 mb-6 mx-auto max-w-2xl shadow-sm sticky top-20 z-30";
+                            banner.innerHTML = '🚫 Online ordering is currently disabled. Please contact the waiter.';
+                            const existingBanner = container.querySelector('.bg-blue-600'); // Room service banner
+                            if (existingBanner) {
+                                existingBanner.after(banner);
+                            } else {
+                                container.prepend(banner);
+                            }
+
+                            // Hide cart bar if visible
+                            cartBar.classList.add('hidden');
+                            cartBar.classList.remove('flex');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Retrying fetchSettings in 2s...", e);
+                // Retry once after delay if failed (e.g. network blip)
+                setTimeout(fetchSettings, 2000);
+            }
+        }
+
+        // Initialize
+        (async () => {
+            // await fetchSettings();
+            loadItems();
+        })();
+    </script>
+</body>
+
+</html>
