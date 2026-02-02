@@ -69,14 +69,21 @@ export const handler = async (event) => {
      return proxyToBackend(method, path, event.body, event.queryStringParameters, headers);
   }
 
+  // 2b. PUT Request: Proxy to Backend (e.g. Update pickup order)
+  if (method === 'PUT') {
+     return proxyToBackend(method, path, event.body, event.queryStringParameters, headers);
+  }
+
   // 3. GET Requests
   if (method === 'GET') {
       // Check if it's a backend endpoint we need to proxy
-      // We proxy: Settings, Table Status, Request Status
+      // We proxy: Settings, Table Status, Request Status, Pickup Status
       const isBackendEndpoint = path && (
           path.includes('/request/status') || 
           path.includes('/settings') || 
-          path.includes('/table/status')
+          path.includes('/table/status') ||
+          path.includes('/pickup/status') ||
+          path.includes('/pickup/lookup')
       );
 
       if (isBackendEndpoint) {
@@ -172,6 +179,18 @@ async function proxyToBackend(method, path, body, queryParams, corsHeaders) {
       // Handle request status endpoint
       else if (normalizedPath.includes('/request/status')) {
           normalizedPath = '/api/guest/request/status';
+      }
+      // Handle pickup status endpoint (guest menu polling for pickup orders)
+      else if (normalizedPath.includes('/pickup/status')) {
+          normalizedPath = '/api/guest/pickup/status';
+      }
+      // Handle pickup lookup by phone (guest menu "enter phone" step)
+      else if (normalizedPath.includes('/pickup/lookup')) {
+          normalizedPath = '/api/guest/pickup/lookup';
+      }
+      // Handle PUT pickup order (guest update approved pickup order within edit window)
+      else if (method === 'PUT' && normalizedPath.includes('/pickup/order')) {
+          normalizedPath = '/api/guest/pickup/order';
       }
       // Handle order request submission (POST) - only for POST method
       else if (method === 'POST' && normalizedPath.includes('/order/request') && !normalizedPath.includes('/settings') && !normalizedPath.includes('/status')) {
