@@ -1308,7 +1308,152 @@
             } else {
                 combinedTotalSection.classList.add('hidden');
             }
+
+            // 5. Pay via UPI: show when we have at least one approved order (dine-in table or pickup phone) and UPI is set
+            let upiSection = document.getElementById('upi-pay-section');
+            const hasUpi = !!(state.settings.upi_id || state.settings.upi_number || state.settings.upi_qr_url);
+            const hasApprovedOrder = state.existingOrder && state.existingOrder.items && state.existingOrder.items.length > 0;
+            const showPaySection = hasUpi && hasApprovedOrder;
+            if (typeof console !== 'undefined' && console.log) {
+                console.log('[PAY_DEBUG] Pay section visibility:', {
+                    hasUpi,
+                    hasApprovedOrder,
+                    existingOrderExists: !!state.existingOrder,
+                    existingOrderItemsCount: state.existingOrder ? (state.existingOrder.items && state.existingOrder.items.length) : 0,
+                    showPaySection,
+                    isPickupMode: state.isPickupMode
+                });
+                if (!hasUpi && hasApprovedOrder) {
+                    console.log('[PAY_DEBUG] Pay is hidden because UPI is not configured. Set UPI ID and/or UPI Number in Web App → Operations → Guest Ordering → Save. Then refresh the menu page.');
+                }
+            }
+            const payBtn = document.getElementById('pay-via-upi-btn');
+            if (payBtn) payBtn.classList.toggle('hidden', !showPaySection);
+            if (showPaySection) {
+                if (!upiSection) {
+                    upiSection = document.createElement('div');
+                    upiSection.id = 'upi-pay-section';
+                    upiSection.className = 'mt-4 pt-4 border-t border-gray-200';
+                    const guestForm = document.querySelector('.pt-6.mt-6.border-t.border-gray-100');
+                    if (guestForm && guestForm.parentNode) guestForm.parentNode.insertBefore(upiSection, guestForm);
+                }
+                const approvedTotal = state.existingOrder.items ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0;
+                const restaurantName = (state.settings.restaurant_name || 'Restaurant').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const upiId = (state.settings.upi_id || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const upiNumber = (state.settings.upi_number || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                upiSection.classList.remove('hidden');
+                upiSection.innerHTML = `
+                    <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <span class="text-green-600">Pay via UPI</span>
+                    </h3>
+                    <div class="bg-gray-50 rounded-xl p-4 space-y-3 text-sm">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                            <span class="text-gray-600 font-medium">Amount to pay (approved order)</span>
+                            <span class="font-bold text-gray-900 text-lg">₹${approvedTotal}</span>
+                        </div>
+                        ${state.settings.upi_id ? `
+                        <div class="flex justify-between items-center gap-2">
+                            <span class="text-gray-600">UPI ID</span>
+                            <span class="font-semibold text-gray-900">${upiId}</span>
+                            <button type="button" data-copy-value="${esc(state.settings.upi_id)}" data-copy-label="UPI ID" onclick="copyFromButton(this)" class="flex-shrink-0 px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-medium">Copy</button>
+                        </div>` : ''}
+                        ${state.settings.upi_number ? `
+                        <div class="flex justify-between items-center gap-2">
+                            <span class="text-gray-600">UPI Number</span>
+                            <span class="font-semibold text-gray-900">${upiNumber}</span>
+                            <button type="button" data-copy-value="${esc(state.settings.upi_number)}" data-copy-label="UPI Number" onclick="copyFromButton(this)" class="flex-shrink-0 px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-medium">Copy</button>
+                        </div>` : ''}
+                        ${state.settings.upi_qr_url ? `<div class="mt-3 flex justify-center"><img src="${state.settings.upi_qr_url}" alt="UPI QR Code" class="w-40 h-40 object-contain border border-gray-200 rounded-lg" onerror="this.style.display='none'"></div>` : ''}
+                        <div class="flex flex-wrap gap-2 mt-3 justify-center">
+                            ${state.settings.upi_id ? `<a href="upi://pay?pa=${encodeURIComponent(state.settings.upi_id)}&pn=${encodeURIComponent(state.settings.restaurant_name || 'Restaurant')}&am=${approvedTotal}&cu=INR" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700">Open in UPI app</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (upiSection) {
+                upiSection.classList.add('hidden');
+            }
         }
+
+        window.startEditingApprovedPickupOrder = () => {
+            if (!state.existingOrder || !state.existingOrder.items) return;
+            state.isEditingApprovedPickupOrder = true;
+            state.cart = {};
+            state.existingOrder.items.forEach(pi => {
+                const code = pi.item_code || pi.code;
+                const originalItem = state.itemsMap[code] || pi;
+                state.cart[code] = { qty: pi.quantity || 0, item: originalItem };
+            });
+            if (!document.getElementById('cart-modal').classList.contains('hidden')) renderCartModalItems();
+            updateCartBarUI();
+        };
+
+        window.cancelEditingApprovedPickupOrder = () => {
+            state.isEditingApprovedPickupOrder = false;
+            state.cart = {};
+            if (!document.getElementById('cart-modal').classList.contains('hidden')) renderCartModalItems();
+            updateCartBarUI();
+        };
+
+        window.saveApprovedPickupOrder = async () => {
+            if (!state.existingOrder || !state.existingOrder.order_id) return;
+            const itemsPayload = Object.values(state.cart).map(c => ({
+                item_code: c.item.item_code || c.item.code,
+                name: c.item.name,
+                price: c.item.price,
+                quantity: c.qty,
+                category: c.item.category,
+                is_cgst_applicable: c.item.is_cgst_applicable,
+                is_sgst_applicable: c.item.is_sgst_applicable,
+                group_id: c.item.group_id,
+                group: c.item.group
+            }));
+            if (itemsPayload.length === 0) return alert('Order must have at least one item.');
+            const btn = document.getElementById('place-order-btn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<div class="w-5 h-5 border-2 border-white rounded-full border-t-transparent animate-spin"></div><span>Saving...</span>'; }
+            try {
+                const res = await axios.put(`${LAMBDA_URL}/pickup/order`, { tenant_id: state.tenantId, order_id: state.existingOrder.order_id, items: itemsPayload });
+                if (res.data.success) {
+                    state.isEditingApprovedPickupOrder = false;
+                    state.cart = {};
+                    state.existingOrder.items = itemsPayload;
+                    await checkPickupStatus(true);
+                    if (!document.getElementById('cart-modal').classList.contains('hidden')) renderCartModalItems();
+                    updateCartBarUI();
+                    alert('Order updated.');
+                } else {
+                    alert(res.data.message || 'Update failed');
+                }
+            } catch (err) {
+                alert(err.response?.data?.error || err.response?.data?.message || 'Connection error');
+                console.error(err);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<span>Save changes</span>'; }
+            }
+        };
+
+        window.scrollToPaySection = () => {
+            const el = document.getElementById('upi-pay-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        window.copyFromButton = (btn) => {
+            const value = btn.getAttribute('data-copy-value') || '';
+            const label = btn.getAttribute('data-copy-label') || '';
+            copyToClipboard(value, label);
+        };
+        window.copyToClipboard = (text, label) => {
+            if (!navigator.clipboard || !navigator.clipboard.writeText) {
+                try { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {}
+            } else {
+                navigator.clipboard.writeText(text).catch(() => {});
+            }
+            const Toast = document.createElement('div');
+            Toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-[100] animate-fade-in';
+            Toast.textContent = (label || 'Copied') + ' copied!';
+            document.body.appendChild(Toast);
+            setTimeout(() => Toast.remove(), 2000);
+        };
 
         window.submitOrder = async () => {
             // ... existing submit order ...
