@@ -1455,8 +1455,8 @@
 
         /**
          * Open UPI payment in a specific app (gpay, phonepe, paytm) or generic upi://.
-         * Paytm: paytmmp://pay (works with personal UPI IDs). GPay/PhonePe: intent with package on Android.
-         * Generic (app null): on Android use intent so system shows UPI app chooser.
+         * Uses app-specific URL schemes so the correct app opens (browsers often ignore intent package= and open default UPI app e.g. WhatsApp).
+         * Paytm: paytmmp://pay. GPay: gpay://upi/pay. PhonePe: phonepe://pay.
          */
         window.openUpiPayToApp = (pa, pn, amount, app) => {
             if (!pa) return;
@@ -1464,18 +1464,19 @@
             const isAndroid = /Android/i.test(navigator.userAgent);
 
             let urlToOpen = `upi://pay?${query}`;
-            let useIntent = false;
             if (app === 'paytm') {
                 urlToOpen = `paytmmp://pay?${query}`;
-            } else if (isAndroid && (app === 'gpay' || app === 'phonepe')) {
-                const packageName = app === 'gpay' ? 'com.google.android.apps.nbu.paisa.user' : 'com.phonepe.app';
-                urlToOpen = `intent://pay?${query}#Intent;scheme=upi;package=${packageName};action=android.intent.action.VIEW;end`;
-                useIntent = true;
+            } else if (app === 'gpay') {
+                // GPay's own scheme opens the app directly; avoids generic upi:// defaulting to WhatsApp
+                urlToOpen = `gpay://upi/pay?${query}`;
+            } else if (app === 'phonepe') {
+                // PhonePe's scheme opens the app directly
+                urlToOpen = `phonepe://pay?${query}`;
             } else if (isAndroid && !app) {
                 urlToOpen = `intent://pay?${query}#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
-                useIntent = true;
             }
 
+            const useIntent = urlToOpen.startsWith('intent://');
             if (useIntent) {
                 const a = document.createElement('a');
                 a.href = urlToOpen;
