@@ -407,8 +407,8 @@
 
         function renderHeader() {
             const header = document.getElementById('restaurant-header');
-            const { restaurant_name, restaurant_address, phone_no } = state.settings;
-            console.log("restaurant_address", restaurant_address)
+            const { restaurant_name, restaurant_address, phone_no, restaurant_logo } = state.settings;
+            const hasLogo = restaurant_logo && String(restaurant_logo).trim() !== '';
 
             // Format address handling string vs object
             let formattedAddress = "";
@@ -425,8 +425,12 @@
                 }
             }
 
+            const logoBlock = hasLogo
+                ? `<div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl shadow-sm mb-4 bg-white overflow-hidden"><img src="${String(restaurant_logo).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}" alt="" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="inline-flex items-center justify-center w-full h-full text-2xl" style="display: none;">🍽️</span></div>`
+                : `<div class="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl shadow-sm mb-4 text-2xl">🍽️</div>`;
+
             header.innerHTML = `
-                <div class="inline-flex items-center justify-center w-12 h-12 bg-white rounded-2xl shadow-sm mb-4 text-2xl">🍽️</div>
+                <div class="h-24 flex items-center justify-center">${logoBlock}</div>
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-1 font-display tracking-tight">${restaurant_name}</h1>
                 <p class="text-gray-500 font-medium text-xs md:text-sm tracking-wide uppercase max-w-md mx-auto leading-relaxed">
                     ${formattedAddress} ${phone_no ? ' • ' + phone_no : ''}
@@ -1363,8 +1367,12 @@
                             ${state.settings.upi_number ? `<button type="button" data-copy-value="${esc(state.settings.upi_number)}" data-copy-label="UPI Number" onclick="copyFromButton(this)" class="flex-shrink-0 px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-medium">Copy</button>` : ''}
                         </div>
                         ${state.settings.upi_qr_url ? `<div class="mt-3 flex justify-center"><img src="${state.settings.upi_qr_url}" alt="UPI QR Code" class="w-40 h-40 object-contain border border-gray-200 rounded-lg" onerror="this.style.display='none'"></div>` : ''}
-                        <div class="flex flex-wrap gap-2 mt-3 justify-center">
-                            ${state.settings.upi_id ? `<button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayFromButton(this)" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 active:bg-green-800 cursor-pointer border-0">Open in UPI app</button>` : ''}
+                        <div class="flex flex-wrap gap-2 mt-3 justify-center items-center">
+                            ${state.settings.upi_id ? `
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'gpay')" class="inline-flex items-center gap-1.5 px-3 py-2.5 bg-[#4285F4] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:opacity-80 cursor-pointer border-0">GPay</button>
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'phonepe')" class="inline-flex items-center gap-1.5 px-3 py-2.5 bg-[#5F259F] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:opacity-80 cursor-pointer border-0">PhonePe</button>
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'paytm')" class="inline-flex items-center gap-1.5 px-3 py-2.5 bg-[#00BAF2] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:opacity-80 cursor-pointer border-0">Paytm</button>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -1436,29 +1444,62 @@
         };
 
         /**
-         * Open UPI payment with payee and amount. Uses intent URL on Android with ACTION_VIEW
-         * so the system shows the UPI app chooser (GPay, PhonePe, Paytm, etc.); uses upi:// on iOS/other.
-         * Amount is formatted for UPI (2 decimals). Without ACTION_VIEW the intent can resolve to wrong apps (e.g. share/WhatsApp).
+         * Build UPI query string (pa, pn, am, cu=INR). Used by generic and app-specific UPI open.
          */
-        window.openUpiPay = (pa, pn, amount) => {
-            if (!pa) return;
+        function buildUpiQuery(pa, pn, amount) {
             const am = Number(amount) >= 0 ? Number(amount).toFixed(2) : '0.00';
             const pnEnc = encodeURIComponent(String(pn || 'Merchant'));
             const paEnc = encodeURIComponent(String(pa).trim());
-            const query = `pa=${paEnc}&pn=${pnEnc}&am=${am}&cu=INR`;
-            const upiUrl = `upi://pay?${query}`;
+            return `pa=${paEnc}&pn=${pnEnc}&am=${am}&cu=INR`;
+        }
+
+        /**
+         * Open UPI payment in a specific app (gpay, phonepe, paytm) or generic upi://.
+         * Paytm: paytmmp://pay (works with personal UPI IDs). GPay/PhonePe: intent with package on Android.
+         * Generic (app null): on Android use intent so system shows UPI app chooser.
+         */
+        window.openUpiPayToApp = (pa, pn, amount, app) => {
+            if (!pa) return;
+            const query = buildUpiQuery(pa, pn, amount);
             const isAndroid = /Android/i.test(navigator.userAgent);
-            if (isAndroid) {
-                const intentUrl = `intent://pay?${query}#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+
+            let urlToOpen = `upi://pay?${query}`;
+            let useIntent = false;
+            if (app === 'paytm') {
+                urlToOpen = `paytmmp://pay?${query}`;
+            } else if (isAndroid && (app === 'gpay' || app === 'phonepe')) {
+                const packageName = app === 'gpay' ? 'com.google.android.apps.nbu.paisa.user' : 'com.phonepe.app';
+                urlToOpen = `intent://pay?${query}#Intent;scheme=upi;package=${packageName};action=android.intent.action.VIEW;end`;
+                useIntent = true;
+            } else if (isAndroid && !app) {
+                urlToOpen = `intent://pay?${query}#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+                useIntent = true;
+            }
+
+            if (useIntent) {
                 const a = document.createElement('a');
-                a.href = intentUrl;
+                a.href = urlToOpen;
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             } else {
-                window.location.href = upiUrl;
+                window.location.href = urlToOpen;
             }
+        };
+
+        window.openUpiPayWithApp = (btn, app) => {
+            const pa = btn.getAttribute('data-upi-id');
+            const pn = btn.getAttribute('data-payee-name') || '';
+            const am = btn.getAttribute('data-amount');
+            if (pa != null && am != null) window.openUpiPayToApp(pa, pn, am, app);
+        };
+
+        /**
+         * Open UPI payment with payee and amount (generic app chooser). Uses intent URL on Android with ACTION_VIEW.
+         */
+        window.openUpiPay = (pa, pn, amount) => {
+            window.openUpiPayToApp(pa, pn, amount, null);
         };
 
         window.openUpiPayFromButton = (btn) => {
