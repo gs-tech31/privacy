@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Restaurant Menu</title>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+    <title>Digikhana Menu</title>
+    <link rel="icon" type="image/png"
+        href="https://digikhana-production.s3.ap-south-1.amazonaws.com/assets/common/DigikhanaLogo.png">
 
     <!-- Fonts & Tailwind -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -435,6 +435,11 @@
                 <p class="text-gray-500 font-medium text-xs md:text-sm tracking-wide uppercase max-w-md mx-auto leading-relaxed">
                     ${formattedAddress} ${phone_no ? ' • ' + phone_no : ''}
                 </p>
+                <div class="max-w-md mx-auto">
+                    <div class="text-[10px] md:text-xs text-gray-400 font-medium mt-1 mb-2 text-center tracking-wide">
+                        Powered by DigiKhana
+                    </div>
+                </div>
             `;
         }
 
@@ -1369,13 +1374,13 @@
                         ${state.settings.upi_qr_url ? `<div class="mt-3 flex justify-center"><img src="${state.settings.upi_qr_url}" alt="UPI QR Code" class="w-40 h-40 object-contain border border-gray-200 rounded-lg" onerror="this.style.display='none'"></div>` : ''}
                         <div class="flex gap-2 mt-3 items-stretch w-full px-3">
                             ${state.settings.upi_id ? `
-                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'gpay')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with GPay">
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'gpay')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with GPay">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" alt="GPay" class="w-10 h-10 object-contain scale-150" onerror="this.style.display='none'" />
                             </button>
-                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'phonepe')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with PhonePe">
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'phonepe')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with PhonePe">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/7/71/PhonePe_Logo.svg" alt="PhonePe" class="h-7 w-auto max-w-full object-contain" onerror="this.style.display='none'" />
                             </button>
-                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="${esc(state.settings.restaurant_name || 'Restaurant')}" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'paytm')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with Paytm">
+                            <button type="button" data-upi-id="${esc(state.settings.upi_id)}" data-payee-name="" data-amount="${approvedTotal}" onclick="openUpiPayWithApp(this, 'paytm')" class="flex-1 flex items-center justify-center min-w-0 h-14 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg active:shadow active:scale-[0.98] cursor-pointer transition-all duration-200" title="Pay with Paytm">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_(standalone).svg" alt="Paytm" class="h-6 w-auto max-w-full object-contain" onerror="this.style.display='none'" />
                             </button>
                             ` : ''}
@@ -1450,13 +1455,17 @@
         };
 
         /**
-         * Build UPI query string (pa, pn, am, cu=INR). Used by generic and app-specific UPI open.
+         * Build UPI query string (pa, optional pn, am, cu=INR). If pn is not sent, the UPI app
+         * fetches the payee name automatically from the UPI ID (pa) via the bank/NPCI directory.
          */
         function buildUpiQuery(pa, pn, amount) {
             const am = Number(amount) >= 0 ? Number(amount).toFixed(2) : '0.00';
-            const pnEnc = encodeURIComponent(String(pn || 'Merchant'));
             const paEnc = encodeURIComponent(String(pa).trim());
-            return `pa=${paEnc}&pn=${pnEnc}&am=${am}&cu=INR`;
+            const parts = [`pa=${paEnc}`, `am=${am}`, 'cu=INR'];
+            if (pn && String(pn).trim() !== '') {
+                parts.splice(1, 0, `pn=${encodeURIComponent(String(pn).trim())}`);
+            }
+            return parts.join('&');
         }
 
         /**
