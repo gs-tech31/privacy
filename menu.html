@@ -361,7 +361,7 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
@@ -520,9 +520,9 @@
                         state.cartModifiedFromPending = false;
                     }
 
-                    // 2. Active Order (Confirmed)
-                    // If search returns active_order with items, those are confirmed items
-                    if (res.data.active_order && res.data.active_order.items) {
+                    // 2. Active Order (Confirmed / Billed)
+                    // If search returns active_order with items or bill details, that's the live/billed order
+                    if (res.data.active_order && (res.data.active_order.items || res.data.active_order.bill_details)) {
                         state.existingOrder = res.data.active_order;
                     } else {
                         state.existingOrder = null;
@@ -1131,14 +1131,18 @@
                 pendingSection.classList.add('hidden');
             }
 
-            // 2. Existing "On Table" Items (Approved Order)
-            if (state.existingOrder && state.existingOrder.items && state.existingOrder.items.length > 0) {
+            // 2. Existing \"On Table\" Items (Approved/Billed Order)
+            const hasExistingItems = state.existingOrder && state.existingOrder.items && state.existingOrder.items.length > 0;
+            const billDetailsFromServer = state.existingOrder && state.existingOrder.bill_details ? state.existingOrder.bill_details : null;
+            if (hasExistingItems) {
                 existingSection.classList.remove('hidden');
                 
-                // Calculate approved order total
-                const approvedTotal = state.existingOrder.items.reduce((sum, i) => {
-                    return sum + ((i.price || 0) * (i.quantity || 0));
-                }, 0);
+                // Calculate approved order total. Prefer backend bill_details.total when available.
+                const approvedTotal = billDetailsFromServer && typeof billDetailsFromServer.total === 'number'
+                    ? billDetailsFromServer.total
+                    : state.existingOrder.items.reduce((sum, i) => {
+                        return sum + ((i.price || 0) * (i.quantity || 0));
+                    }, 0);
                 
                 existingList.innerHTML = state.existingOrder.items.map(i => `
                     <div class="flex justify-between items-center py-1">
@@ -1280,38 +1284,78 @@
             // Recalculate pending total (original pending quantities)
             const pendingTotalForCombined = state.pendingRequest && state.pendingRequest.items ? 
                 state.pendingRequest.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0;
-            const approvedTotal = state.existingOrder && state.existingOrder.items ? 
-                state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0;
-            // cartTotal is the new items total (quantity increases only)
-            const grandTotal = pendingTotalForCombined + approvedTotal + cartTotal;
+            // Prefer backend bill_details for approved/billed totals and discount breakdown
+            const approvedBillDetails = state.existingOrder && state.existingOrder.bill_details ? state.existingOrder.bill_details : null;
+            const approvedTotal = approvedBillDetails && typeof approvedBillDetails.total === 'number'
+                ? approvedBillDetails.total
+                : (state.existingOrder && state.existingOrder.items 
+                    ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) 
+                    : 0);
+            // Total order value = approved (to pay now) + pending (future) – excludes unsent new items
+            const totalOrderValue = approvedTotal + pendingTotalForCombined;
             
-            // Show combined total if there are any totals to show
-            if (grandTotal > 0) {
+            // Show combined total section if there is anything meaningful to display
+            if (approvedTotal > 0 || pendingTotalForCombined > 0) {
                 combinedTotalSection.classList.remove('hidden');
                 combinedTotalSection.innerHTML = `
-                    <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                    <div class="bg-gray-900 text-white rounded-2xl p-4 space-y-4">
+                        <!-- Payment Due (Approved items only) -->
                         ${approvedTotal > 0 ? `
-                        <div class="flex justify-between items-center text-sm">
-                            <span class="text-gray-600">Approved Order:</span>
-                            <span class="font-semibold text-green-600">₹${approvedTotal}</span>
+                        <div>
+                            <div class="text-xs font-semibold tracking-wide text-gray-300 uppercase mb-1">Payment Due Now</div>
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-2xl font-bold text-green-400">₹${approvedTotal.toFixed(2)}</span>
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-1">(Approved items only)</div>
                         </div>
                         ` : ''}
+
+                        <!-- Approved items breakdown -->
+                        ${approvedBillDetails ? `
+                        <div class="pt-3 border-t border-gray-700">
+                            <div class="text-xs font-semibold text-gray-300 uppercase mb-2">Approved Items</div>
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-gray-300">Subtotal</span>
+                                <span class="text-gray-100">₹${Number(approvedBillDetails.sub_total || 0).toFixed(2)}</span>
+                            </div>
+                            ${approvedBillDetails.discount > 0 ? `
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-gray-300">Discount</span>
+                                <span class="text-red-300">-₹${Number(approvedBillDetails.discount || 0).toFixed(2)}</span>
+                            </div>` : ''}
+                            ${(approvedBillDetails.cgst > 0 || approvedBillDetails.sgst > 0) ? `
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-gray-300">Tax (CGST + SGST)</span>
+                                <span class="text-gray-100">₹${(Number(approvedBillDetails.cgst || 0) + Number(approvedBillDetails.sgst || 0)).toFixed(2)}</span>
+                            </div>` : ''}
+                            <div class="border-t border-gray-700 my-2"></div>
+                            <div class="flex justify-between items-center text-sm font-semibold">
+                                <span class="text-gray-100">Total to Pay</span>
+                                <span class="text-green-400">₹${approvedTotal.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- Pending items (informational) -->
                         ${pendingTotalForCombined > 0 ? `
-                        <div class="flex justify-between items-center text-sm">
-                            <span class="text-gray-600">Pending Order:</span>
-                            <span class="font-semibold text-orange-600">₹${pendingTotalForCombined}</span>
+                        <div class="pt-3 border-t border-gray-800">
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-300">Pending Items (Not charged yet)</span>
+                                <span class="font-semibold text-orange-400">₹${pendingTotalForCombined.toFixed(2)}</span>
+                            </div>
+                            <div class="text-[11px] text-gray-500 mt-1">You’ll be charged after approval.</div>
                         </div>
                         ` : ''}
-                        ${cartTotal > 0 ? `
-                        <div class="flex justify-between items-center text-sm">
-                            <span class="text-gray-600">New Items:</span>
-                            <span class="font-semibold text-orange-600">₹${cartTotal}</span>
+
+                        <!-- Optional total order value -->
+                        ${totalOrderValue > 0 && pendingTotalForCombined > 0 ? `
+                        <div class="pt-2 border-t border-gray-800">
+                            <div class="flex justify-between items-center text-[11px] text-gray-500">
+                                <span>Total order value (approved + pending)</span>
+                                <span>₹${totalOrderValue.toFixed(2)}</span>
+                            </div>
                         </div>
                         ` : ''}
-                        <div class="flex justify-between items-center pt-2 mt-2 border-t border-gray-300">
-                            <span class="font-bold text-gray-900 text-base">Grand Total:</span>
-                            <span class="font-bold text-gray-900 text-lg">₹${grandTotal}</span>
-                        </div>
                     </div>
                 `;
             } else {
@@ -1346,7 +1390,10 @@
                     const guestForm = document.querySelector('.pt-6.mt-6.border-t.border-gray-100');
                     if (guestForm && guestForm.parentNode) guestForm.parentNode.insertBefore(upiSection, guestForm);
                 }
-                const approvedTotal = state.existingOrder.items ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0;
+                const approvedBillForUpi = state.existingOrder && state.existingOrder.bill_details ? state.existingOrder.bill_details : null;
+                const approvedTotal = approvedBillForUpi && typeof approvedBillForUpi.total === 'number'
+                    ? approvedBillForUpi.total
+                    : (state.existingOrder.items ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0);
                 const restaurantName = (state.settings.restaurant_name || 'Restaurant').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 const upiId = (state.settings.upi_id || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 const upiNumber = (state.settings.upi_number || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
