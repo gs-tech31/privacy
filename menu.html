@@ -342,7 +342,7 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 mb-1">Pickup Order</h3>
                 <p class="text-gray-500 text-sm">
-                    Enter your phone number to view your orders, status and pay (same as table number for dine-in).
+                    Enter your phone number to continue.
                 </p>
             </div>
             <div class="space-y-4 mt-4">
@@ -422,7 +422,7 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = true;
+        const IS_LOCAL = false;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
