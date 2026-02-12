@@ -333,13 +333,60 @@
         </div>
     </div>
 
+    <!-- Pickup Identity Gate (Full-page overlay for pickup QR) -->
+    <div id="pickup-gate-overlay" class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div class="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6">
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🛍️
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-1">Pickup Order</h3>
+                <p class="text-gray-500 text-sm">
+                    Enter your phone number to view your orders, status and pay (same as table number for dine-in).
+                </p>
+            </div>
+            <div class="space-y-4 mt-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Phone Number <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="pickup-gate-phone"
+                        type="tel"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-400 text-sm"
+                        placeholder="Enter your phone number"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Name <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="pickup-gate-name"
+                        type="text"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-400 text-sm"
+                        placeholder="Enter your name"
+                    />
+                </div>
+                <p id="pickup-gate-error" class="text-xs text-red-500 min-h-[1.25rem]"></p>
+                <button
+                    onclick="handlePickupGateSubmit()"
+                    class="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-base shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // State
+        const urlParams = new URLSearchParams(window.location.search);
         const state = {
-            tenantId: new URLSearchParams(window.location.search).get('tenant_id'),
-            tableId: new URLSearchParams(window.location.search).get('table_id') || new URLSearchParams(window.location.search).get('room_id'),
-            hallId: new URLSearchParams(window.location.search).get('hall_id') || (new URLSearchParams(window.location.search).get('room_id') ? 'ROOM_SERVICE' : null),
+            tenantId: urlParams.get('tenant_id'),
+            tableId: urlParams.get('table_id') || urlParams.get('room_id'),
+            hallId: urlParams.get('hall_id') || (urlParams.get('room_id') ? 'ROOM_SERVICE' : null),
             items: [],
             itemsMap: {},
             cart: {}, // { code: { qty: 1, item: ... } }
@@ -353,19 +400,98 @@
             isSyncing: false, // Show syncing indicator when talking to server
             flowStatus: 'idle', // 'idle' | 'editing' | 'pending' | 'approved'
             filter: { category: 'All', search: '' },
-            settings: {}
+            settings: {},
+            // Pickup specific (phone = identifier, like table_id+hall_id for dine-in)
+            isPickupMode: false,
+            guestPhone: "",
+            guestName: "",
+            isPickupInitialized: false,
+            pickupPollingIntervalId: null, // setInterval for polling status by phone
         };
+
+        // Initialize pickup flags from URL (separate QR for pickup)
+        (function initPickupFlags() {
+            const pickupFlag = urlParams.get('pickup');
+            if (pickupFlag && (pickupFlag === 'true' || pickupFlag === '1')) {
+                state.isPickupMode = true;
+            }
+        })();
 
         function markUserActive() {
             state.lastUserAction = Date.now();
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
         // ... Initialization ... 
+
+        function renderPickupGateIfNeeded() {
+            const overlay = document.getElementById('pickup-gate-overlay');
+            if (!overlay) return;
+
+            // Only show gate in pickup mode when identity not yet initialized
+            if (state.isPickupMode && !state.isPickupInitialized) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+
+                // Pre-fill inputs if we already have values
+                const phoneInput = document.getElementById('pickup-gate-phone');
+                const nameInput = document.getElementById('pickup-gate-name');
+                if (phoneInput && state.guestPhone) phoneInput.value = state.guestPhone;
+                if (nameInput && state.guestName) nameInput.value = state.guestName;
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        function normalizeTenDigitPhone(input) {
+            const digits = String(input || "").replace(/\D/g, "");
+            return digits.length === 10 ? digits : null;
+        }
+
+        window.handlePickupGateSubmit = async () => {
+            const phoneInput = document.getElementById('pickup-gate-phone');
+            const nameInput = document.getElementById('pickup-gate-name');
+            const errorEl = document.getElementById('pickup-gate-error');
+            if (!phoneInput || !nameInput || !errorEl) return;
+
+            const phone = (phoneInput.value || '').trim();
+            const name = (nameInput.value || '').trim();
+
+            if (!phone || !name) {
+                errorEl.textContent = 'Phone number and name are required for pickup orders.';
+                return;
+            }
+
+            const normalizedPhone = normalizeTenDigitPhone(phone);
+            if (!normalizedPhone) {
+                errorEl.textContent = 'Please enter a valid 10-digit phone number.';
+                return;
+            }
+
+            errorEl.textContent = '';
+            state.guestPhone = normalizedPhone;
+            state.guestName = name;
+            state.isPickupInitialized = true;
+
+            // Sync into cart guest details inputs if they exist
+            const guestNameInput = document.getElementById('guest-name');
+            const guestPhoneInput = document.getElementById('guest-phone');
+            if (guestNameInput) guestNameInput.value = state.guestName;
+            if (guestPhoneInput) guestPhoneInput.value = state.guestPhone;
+            phoneInput.value = state.guestPhone;
+
+            renderPickupGateIfNeeded();
+            // Initial fetch by phone (same as checkTableStatus for dine-in)
+            await checkPickupStatus(true);
+            // Poll and sync status/details every 5s (same as dine-in)
+            if (state.pickupPollingIntervalId) clearInterval(state.pickupPollingIntervalId);
+            state.pickupPollingIntervalId = setInterval(() => checkPickupStatus(false), 5000);
+        };
 
         async function init() {
             if (!state.tenantId) {
@@ -388,8 +514,12 @@
 
                 renderMenu();
 
-                // 3. Initial Table Status Check (via Lambda/Sim)
-                if (state.tableId && state.hallId) {
+                // 3. Initial Status Check
+                if (state.isPickupMode) {
+                    // Show full-page gate; status will be fetched after identity is submitted
+                    renderPickupGateIfNeeded();
+                    updateCartSummaryTop();
+                } else if (state.tableId && state.hallId) {
                     await checkTableStatus(true);
                     // Poll status every 5s
                     setInterval(() => checkTableStatus(false), 5000);
@@ -588,6 +718,95 @@
             }
         }
 
+        // --- Pickup Status (by phone) ---
+        async function checkPickupStatus(force = false) {
+            // Skip polling if user was active in the last 10 seconds, unless forced
+            if (!force && state.lastUserAction && Date.now() - state.lastUserAction < 10000) {
+                return;
+            }
+
+            if (!state.guestPhone) {
+                return;
+            }
+
+            state.isSyncing = true;
+            updateCartBarUI();
+
+            try {
+                const res = await axios.get(`${LAMBDA_URL}/pickup/status`, {
+                    params: { tenant_id: state.tenantId, guest_phone: state.guestPhone }
+                });
+
+                if (res.data && res.data.success) {
+                    const prevPendingId = state.pendingRequest ? state.pendingRequest.request_id : null;
+                    const pending = res.data.pending_request || null;
+                    const active = res.data.active_order || null;
+
+                    // Pending request handling (mirror table logic but keyed by phone)
+                    if (pending) {
+                        const newPendingId = pending.request_id;
+                        const isNewPendingRequest = !state.pendingRequest || state.pendingRequest.request_id !== newPendingId;
+
+                        if (!state.isEditingPendingRequest && !state.cartModifiedFromPending) {
+                            if (isNewPendingRequest || !state.cartModifiedFromPending) {
+                                state.pendingRequest = pending;
+
+                                // Populate cart with pending items
+                                state.cart = {};
+                                (pending.items || []).forEach(pi => {
+                                    const originalItem = state.itemsMap[pi.item_code] || pi;
+                                    state.cart[pi.item_code] = {
+                                        qty: pi.quantity,
+                                        item: originalItem
+                                    };
+                                });
+
+                                state.cartModifiedFromPending = false;
+                                updateCartBarUI();
+                                updateMenuQuantitiesOnly();
+                            } else {
+                                state.pendingRequest = pending;
+                            }
+                        } else {
+                            state.pendingRequest = pending;
+                        }
+                    } else if (!pending && prevPendingId) {
+                        // Pending request was approved/removed
+                        if (Object.keys(state.cart).length > 0) {
+                            state.cart = {};
+                            updateCartBarUI();
+                            updateMenuQuantitiesOnly();
+                            updateCartSummaryTop();
+                        }
+                        state.pendingRequest = null;
+                        state.isEditingPendingRequest = false;
+                        state.cartModifiedFromPending = false;
+                    }
+
+                    // Active pickup order (if any)
+                    if (active && (active.items || active.bill_details)) {
+                        state.existingOrder = active;
+                    } else {
+                        state.existingOrder = null;
+                    }
+
+                    updateFlowStatus();
+
+                    if (!document.getElementById('cart-modal').classList.contains('hidden')) {
+                        renderCartModalItems();
+                    }
+
+                    updateStatusUI();
+                    updateCartBarUI();
+                }
+            } catch (e) {
+                console.log("Pickup status check failed silently", e);
+            } finally {
+                state.isSyncing = false;
+                updateCartBarUI();
+            }
+        }
+
         window.cancelPendingRequest = async () => {
             if (!confirm('Are you sure you want to cancel your request?')) return;
 
@@ -615,7 +834,7 @@
                     updateMenuQuantitiesOnly();
                     
                     // Refresh status to sync with backend
-                    checkTableStatus(true);
+                    if (state.isPickupMode) checkPickupStatus(true); else checkTableStatus(true);
                 } else {
                     alert('Failed to cancel request');
                 }
@@ -1070,6 +1289,14 @@
             document.getElementById('cart-modal').classList.remove('hidden');
             renderCartModalItems();
             document.body.style.overflow = 'hidden';
+            // Pickup: refresh status when opening cart so discount/updates from staff show immediately (like dine-in)
+            if (state.isPickupMode && state.guestPhone && typeof checkPickupStatus === 'function') {
+                checkPickupStatus(true).then(() => {
+                    renderCartModalItems();
+                    updateCartBarUI();
+                    updateCartSummaryTop();
+                }).catch(() => {});
+            }
         };
 
         window.closeCart = () => {
@@ -1211,11 +1438,14 @@
                 submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 submitBtn.innerHTML = `<span>Use "Edit Order" to modify</span>`;
             } else {
-                // Show checkout button when there are new items
+                // Show checkout button when there are new items (or "Save changes" when editing approved pickup order)
                 submitBtn.style.display = 'block';
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
+                submitBtn.innerHTML = isEditingApprovedPickup
+                    ? `<span>Send request</span>`
+                    : `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
             }
             
             // Show all items in cart (pending + new)
@@ -1591,7 +1821,6 @@
         };
 
         window.submitOrder = async () => {
-            // ... existing submit order ...
             const btn = document.getElementById('place-order-btn');
             if (Object.keys(state.cart).length === 0) return alert('Cart is empty');
             
@@ -1607,24 +1836,89 @@
             btn.innerHTML = `<div class="w-5 h-5 border-2 border-white rounded-full border-t-transparent animate-spin"></div><span>Sending...</span>`;
             btn.disabled = true;
 
-            const payload = {
-                tenant_id: state.tenantId,
-                table_id: state.tableId,
-                hall_id: state.hallId,
-                items: Object.values(state.cart).map(c => ({
-                    item_code: c.item.item_code,
-                    name: c.item.name,
-                    price: c.item.price,
-                    quantity: c.qty,
-                    category: c.item.category,
-                    is_cgst_applicable: c.item.is_cgst_applicable,
-                    is_sgst_applicable: c.item.is_sgst_applicable,
-                    group_id: c.item.group_id,
-                    group: c.item.group
-                })),
-                guest_name: document.getElementById('guest-name').value || "Guest",
-                guest_phone: document.getElementById('guest-phone').value || ""
-            };
+            // Sync guest details from inputs into state
+            const guestNameInput = (document.getElementById('guest-name')?.value || "").trim();
+            const guestPhoneInput = (document.getElementById('guest-phone')?.value || "").trim();
+            if (guestNameInput) state.guestName = guestNameInput;
+            if (guestPhoneInput) state.guestPhone = guestPhoneInput;
+
+            // For pickup mode, enforce phone + name before submit
+            if (state.isPickupMode) {
+                const normalizedPhone = normalizeTenDigitPhone(state.guestPhone);
+                if (!normalizedPhone) {
+                    alert('Please enter a valid 10-digit phone number for pickup orders.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    btn.disabled = false;
+                    btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    return;
+                }
+                state.guestPhone = normalizedPhone;
+                if (!state.guestName) {
+                    alert('Name is required for pickup orders.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    btn.disabled = false;
+                    btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    return;
+                }
+            }
+
+            const baseItems = Object.values(state.cart).map(c => ({
+                item_code: c.item.item_code,
+                name: c.item.name,
+                price: c.item.price,
+                quantity: c.qty,
+                category: c.item.category,
+                is_cgst_applicable: c.item.is_cgst_applicable,
+                is_sgst_applicable: c.item.is_sgst_applicable,
+                group_id: c.item.group_id,
+                group: c.item.group
+            }));
+
+            // Pickup with existing approved order: if user is editing the full approved order, send only delta (additions)
+            // Otherwise (normal flow), the cart already represents the items to add, so send as-is.
+            let pickupItems = baseItems;
+            if (state.isPickupMode && state.isEditingApprovedPickupOrder && state.existingOrder && state.existingOrder.items && state.existingOrder.items.length > 0) {
+                const existingQtyByKey = {};
+                (state.existingOrder.items || []).forEach(i => {
+                    const code = String(i.item_code != null ? i.item_code : i.code || '').trim();
+                    const key = (i.portion ? `${code}_${i.portion}` : code);
+                    if (code) existingQtyByKey[key] = (existingQtyByKey[key] || 0) + (Number(i.quantity) || 0);
+                });
+                const deltaItems = baseItems.filter(c => {
+                    const code = String(c.item_code != null ? c.item_code : c.code || '').trim();
+                    const portion = c.portion || (c.item && c.item.portion);
+                    const key = (portion ? `${code}_${portion}` : code);
+                    const cartQty = Number(c.quantity) || 0;
+                    const existingQty = existingQtyByKey[key] || 0;
+                    const addQty = Math.max(0, cartQty - existingQty);
+                    c.quantity = addQty;
+                    return addQty > 0;
+                });
+                if (deltaItems.length === 0) {
+                    alert('Add at least one new item to send a request. Your approved order already has the current items.');
+                    return;
+                }
+                pickupItems = deltaItems;
+            }
+
+            const payload = state.isPickupMode
+                ? {
+                    tenant_id: state.tenantId,
+                    items: pickupItems,
+                    guest_name: state.guestName || "Guest",
+                    guest_phone: state.guestPhone,
+                    order_type: "pickup",
+                }
+                : {
+                    tenant_id: state.tenantId,
+                    table_id: state.tableId,
+                    hall_id: state.hallId,
+                    items: baseItems,
+                    guest_name: state.guestName || "Guest",
+                    guest_phone: state.guestPhone || ""
+                };
 
             try {
                 const res = await axios.post(LAMBDA_URL, payload);
@@ -1640,7 +1934,11 @@
                     document.getElementById('confirm-dialog').classList.remove('hidden');
                     document.getElementById('confirm-dialog').classList.add('flex');
                     // Force immediate status check
-                    checkTableStatus(true);
+                    if (state.isPickupMode) {
+                        checkPickupStatus(true);
+                    } else {
+                        checkTableStatus(true);
+                    }
                 } else {
                     alert(res.data.message || 'Failed to submit order'); // Improved error msg
                 }

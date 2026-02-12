@@ -63,20 +63,28 @@ export const handler = async (event) => {
      return proxyToBackend(method, path, event.body, event.queryStringParameters, headers);
   }
 
-  // 2. DELETE Request: Proxy to Backend (e.g. Cancel Request)
+  // 2. PUT Request: Proxy to Backend (e.g. Guest update pickup order)
+  if (method === 'PUT') {
+     console.log(`[Handler] PUT request detected. Proxying to backend...`);
+     return proxyToBackend(method, path, event.body, event.queryStringParameters, headers);
+  }
+
+  // 3. DELETE Request: Proxy to Backend (e.g. Cancel Request)
   if (method === 'DELETE') {
      console.log(`[Handler] DELETE request detected. Proxying to backend...`);
      return proxyToBackend(method, path, event.body, event.queryStringParameters, headers);
   }
 
-  // 3. GET Requests
+  // 4. GET Requests
   if (method === 'GET') {
       // Check if it's a backend endpoint we need to proxy
-      // We proxy: Settings, Table Status, Request Status
+      // We proxy: Settings, Table Status, Request Status, Pickup Status
       const isBackendEndpoint = path && (
           path.includes('/request/status') || 
-          path.includes('/settings') || 
-          path.includes('/table/status')
+          path.includes('/settings') ||
+          path.includes('/table/status') ||
+          path.includes('/pickup/status') ||
+          path.includes('/pickup/order')
       );
 
       if (isBackendEndpoint) {
@@ -164,6 +172,14 @@ async function proxyToBackend(method, path, body, queryParams, corsHeaders) {
       // Handle settings endpoint - can come as /settings, /api/guest/settings, or /api/guest/order/request/settings
       else if (normalizedPath.includes('/settings') && !normalizedPath.includes('/request/status')) {
           normalizedPath = '/api/guest/settings';
+      } 
+      // Handle pickup status endpoint
+      else if (normalizedPath.includes('/pickup/status')) {
+          normalizedPath = '/api/guest/pickup/status';
+      }
+      // Handle pickup order lookup by order_id (guest view status + pay)
+      else if (normalizedPath.includes('/pickup/order')) {
+          normalizedPath = '/api/guest/pickup/order';
       } 
       // Handle table status endpoint
       else if (normalizedPath.includes('/table/status')) {
