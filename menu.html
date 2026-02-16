@@ -150,6 +150,11 @@
                 </button>
             </div>
 
+            <!-- Group Chips -->
+            <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar mt-2 pb-1 max-w-lg mx-auto"
+                id="group-chips">
+                <!-- Injected dynamically -->
+            </div>
             <!-- Category Chips -->
             <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar mt-3 pb-1 max-w-lg mx-auto"
                 id="category-chips">
@@ -266,7 +271,7 @@
                 <!-- Guest Form -->
                 <div class="pt-6 mt-6 border-t border-gray-100 space-y-4">
                     <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Details <span
-                            class="font-normal text-gray-400 capitalize">(Optional)</span></h3>
+                            id="guest-details-label" class="font-normal text-gray-400 capitalize"></span></h3>
                     <input type="text" id="guest-name" placeholder="Your Name"
                         class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
                     <input type="tel" id="guest-phone" placeholder="Phone Number"
@@ -342,21 +347,10 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 mb-1">Pickup Order</h3>
                 <p class="text-gray-500 text-sm">
-                    Enter your phone number to continue.
+                    Enter your name and phone number to continue.
                 </p>
             </div>
             <div class="space-y-4 mt-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">
-                        Phone Number <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                        id="pickup-gate-phone"
-                        type="tel"
-                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-400 text-sm"
-                        placeholder="Enter your phone number"
-                    />
-                </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">
                         Name <span class="text-red-500">*</span>
@@ -366,6 +360,17 @@
                         type="text"
                         class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-400 text-sm"
                         placeholder="Enter your name"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Phone Number <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        id="pickup-gate-phone"
+                        type="tel"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-400 text-sm"
+                        placeholder="Enter your phone number"
                     />
                 </div>
                 <p id="pickup-gate-error" class="text-xs text-red-500 min-h-[1.25rem]"></p>
@@ -387,6 +392,7 @@
             tenantId: urlParams.get('tenant_id'),
             tableId: urlParams.get('table_id') || urlParams.get('room_id'),
             hallId: urlParams.get('hall_id') || (urlParams.get('room_id') ? 'ROOM_SERVICE' : null),
+            floor: urlParams.get('floor') || null,
             items: [],
             itemsMap: {},
             cart: {}, // { code: { qty: 1, item: ... } }
@@ -399,7 +405,7 @@
             lastUserAction: null, // Track last user interaction time for polling pause
             isSyncing: false, // Show syncing indicator when talking to server
             flowStatus: 'idle', // 'idle' | 'editing' | 'pending' | 'approved'
-            filter: { category: 'All', search: '' },
+            filter: { category: 'All', group: 'All', search: '' },
             settings: {},
             // Pickup specific (phone = identifier, like table_id+hall_id for dine-in)
             isPickupMode: false,
@@ -927,12 +933,14 @@
                 });
 
                 renderCategories();
+                renderGroupChips();
                 isMenuRendered = true;
             }
 
             // Filtering (Visibility Toggle)
             const searchQuery = state.filter.search ? state.filter.search.toLowerCase() : "";
             const selectedCat = state.filter.category;
+            const selectedGroup = state.filter.group;
 
             let hasVisibleItems = false;
 
@@ -951,10 +959,12 @@
 
                     if (!item) return;
 
+                    const itemGroup = item.group || item.group_name || 'Other';
                     const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery);
                     const matchCat = selectedCat === 'All' || item.category === selectedCat;
+                    const matchGroup = selectedGroup === 'All' || itemGroup === selectedGroup;
 
-                    if (matchSearch && matchCat) {
+                    if (matchSearch && matchCat && matchGroup) {
                         card.classList.remove('hidden');
                         visibleItemsInSection++;
                         hasVisibleItems = true;
@@ -1053,20 +1063,42 @@
 
         function renderCategories() {
             const container = document.getElementById('category-chips');
-            // Get unique cats
-            const cats = ['All', ...new Set(state.items.map(i => i.category || 'Other'))];
+            if (!container) return;
+            // When a group is selected, only show categories that exist in that group
+            const itemsForCats = state.filter.group === 'All'
+                ? state.items
+                : state.items.filter(i => (i.group || i.group_name || 'Other') === state.filter.group);
+            const cats = ['All', ...new Set(itemsForCats.map(i => i.category || 'Other'))];
             container.innerHTML = cats.map(cat => {
-                // Ensure strict comparison works by trimming or handling potential type issues if any
                 const isActive = state.filter.category === cat;
                 return `
-                <button onclick="setCategory('${cat.replace(/'/g, "\\'")}')" 
+                <button onclick="setCategory('${String(cat).replace(/'/g, "\\'")}')" 
                     class="category-chip px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all border ${isActive ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
                     ${cat}
                 </button>
             `}).join('');
         }
 
-
+        function renderGroupChips() {
+            const container = document.getElementById('group-chips');
+            if (!container) return;
+            const uniqueGroups = new Set(state.items.map(i => i.group || i.group_name || 'Other'));
+            if (uniqueGroups.size <= 1) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+            container.style.display = 'flex';
+            const groupNames = ['All', ...uniqueGroups];
+            container.innerHTML = groupNames.map(grp => {
+                const isActive = state.filter.group === grp;
+                return `
+                <button onclick="setGroup('${String(grp).replace(/'/g, "\\'")}')" 
+                    class="group-chip px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all border ${isActive ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}">
+                    ${grp}
+                </button>
+            `}).join('');
+        }
 
         // --- Interaction ---
 
@@ -1271,7 +1303,15 @@
 
         window.setCategory = (cat) => {
             state.filter.category = cat;
-            renderCategories(); // Update category chips to reflect new selection
+            renderCategories();
+            renderMenu();
+        };
+
+        window.setGroup = (grp) => {
+            state.filter.group = grp;
+            state.filter.category = 'All'; // Reset category so it stays valid for the new group
+            renderGroupChips();
+            renderCategories();
             renderMenu();
         };
 
@@ -1288,6 +1328,13 @@
             
             document.getElementById('cart-modal').classList.remove('hidden');
             renderCartModalItems();
+            const isRoomOrGuestHouse = state.hallId === 'ROOM_SERVICE' || (state.floor != null && String(state.floor).trim() !== '');
+            const labelEl = document.getElementById('guest-details-label');
+            if (labelEl) labelEl.innerHTML = isRoomOrGuestHouse ? '<span class="text-red-500"> *</span>' : '';
+            const nameInput = document.getElementById('guest-name');
+            const phoneInput = document.getElementById('guest-phone');
+            if (nameInput) nameInput.placeholder = isRoomOrGuestHouse ? 'Your Name *' : 'Your Name';
+            if (phoneInput) phoneInput.placeholder = isRoomOrGuestHouse ? 'Phone Number *' : 'Phone Number';
             document.body.style.overflow = 'hidden';
             // Pickup: refresh status when opening cart so discount/updates from staff show immediately (like dine-in)
             if (state.isPickupMode && state.guestPhone && typeof checkPickupStatus === 'function') {
@@ -1440,12 +1487,18 @@
             } else {
                 // Show checkout button when there are new items (or "Save changes" when editing approved pickup order)
                 submitBtn.style.display = 'block';
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
-                submitBtn.innerHTML = isEditingApprovedPickup
-                    ? `<span>Send request</span>`
-                    : `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                if (state.isSyncing) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-80');
+                    submitBtn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></span><span>Sending request...</span></span>';
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'opacity-80');
+                    const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
+                    submitBtn.innerHTML = isEditingApprovedPickup
+                        ? `<span>Send request</span>`
+                        : `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                }
             }
             
             // Show all items in cart (pending + new)
@@ -1833,7 +1886,7 @@
             state.isSyncing = true;
             updateCartBarUI();
 
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white rounded-full border-t-transparent animate-spin"></div><span>Sending...</span>`;
+            btn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></span><span>Sending request...</span></span>';
             btn.disabled = true;
 
             // Sync guest details from inputs into state
@@ -1849,8 +1902,7 @@
                     alert('Please enter a valid 10-digit phone number for pickup orders.');
                     state.isSyncing = false;
                     updateCartBarUI();
-                    btn.disabled = false;
-                    btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
                     return;
                 }
                 state.guestPhone = normalizedPhone;
@@ -1858,8 +1910,27 @@
                     alert('Name is required for pickup orders.');
                     state.isSyncing = false;
                     updateCartBarUI();
-                    btn.disabled = false;
-                    btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
+                    return;
+                }
+            }
+            // For room / guest house orders, require name and phone
+            const isRoomOrGuestHouse = state.hallId === 'ROOM_SERVICE' || (state.floor != null && String(state.floor).trim() !== '');
+            if (!state.isPickupMode && isRoomOrGuestHouse) {
+                const normalizedPhone = normalizeTenDigitPhone(state.guestPhone);
+                if (!normalizedPhone) {
+                    alert('Please enter a valid 10-digit Phone Number and Name.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
+                    return;
+                }
+                state.guestPhone = normalizedPhone;
+                if (!state.guestName || !state.guestName.trim()) {
+                    alert('Please enter your name. Name and phone are required for room and guest house orders.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
                     return;
                 }
             }
@@ -1915,6 +1986,7 @@
                     tenant_id: state.tenantId,
                     table_id: state.tableId,
                     hall_id: state.hallId,
+                    ...(state.floor ? { floor: state.floor } : {}),
                     items: baseItems,
                     guest_name: state.guestName || "Guest",
                     guest_phone: state.guestPhone || ""
@@ -1946,29 +2018,12 @@
                 alert('Connection Error');
                 console.error(err);
             } finally {
-                // Recalculate to determine button text
-                const pendingQuantities = {};
-                if (state.pendingRequest && state.pendingRequest.items) {
-                    state.pendingRequest.items.forEach(i => {
-                        pendingQuantities[i.item_code] = i.quantity || 0;
-                    });
-                }
-                const items = Object.values(state.cart);
-                const cartTotal = items.reduce((sum, { qty, item }) => {
-                    const pendingQty = pendingQuantities[item.item_code] || 0;
-                    const newQty = Math.max(0, qty - pendingQty);
-                    return sum + (item.price * newQty);
-                }, 0);
-                const hasNewItems = cartTotal > 0;
-                
-                if (hasNewItems) {
-                    btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
-                } else {
-                    btn.style.display = 'none';
-                }
                 state.isSyncing = false;
                 updateCartBarUI();
-                btn.disabled = false;
+                if (btn) {
+                    btn.disabled = false;
+                    renderCartModalItems();
+                }
             }
         };
 
