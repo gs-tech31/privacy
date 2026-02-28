@@ -1,35 +1,7 @@
-import { DynamoDB } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocument } from '@aws-sdk/lib-dynamodb';
-
-const dynamoDbClient = DynamoDBDocument.from(new DynamoDB());
-
-// ✅ CRITICAL: Using the Production table from your 8003 environment
-const ITEMS_TABLE = 'digikhana_production_items'; 
-
-// CONFIG: Backend URL 
+// CONFIG: Backend URL
 // ⚠️ NOTE: Set BACKEND_URL environment variable in Lambda configuration!
 // Ensure EC2 security group allows Lambda VPC access
-const BACKEND_URL = process.env.BACKEND_URL || "http://13.203.120.152:3000"; 
-
-const getAllItems = async (tenantId) => {
-  console.log(`[getAllItems] Fetching for tenant: ${tenantId}, Table: ${ITEMS_TABLE}`);
-  const params = {
-    TableName: ITEMS_TABLE,
-    KeyConditionExpression: "tenant_id = :tenantId",
-    ExpressionAttributeValues: {
-      ":tenantId": tenantId,
-    },
-  };
-
-  try {
-    const data = await dynamoDbClient.query(params); 
-    console.log(`[getAllItems] Success. Found ${data.Items?.length || 0} items.`);
-    return data.Items;
-  } catch (error) {
-    console.error("[getAllItems] DynamoDB Error:", JSON.stringify(error));
-    throw new Error("Could not retrieve items");
-  }
-};
+const BACKEND_URL = process.env.BACKEND_URL || "http://13.203.120.152:3000";
 
 export const handler = async (event) => {
   console.log("🚀 [Handler] START. Event:", JSON.stringify(event));
@@ -92,35 +64,11 @@ export const handler = async (event) => {
           return proxyToBackend(method, path, null, event.queryStringParameters, headers);
       } 
       
-      // Default GET: Fetch Menu Items from DynamoDB
+      // Default GET: Proxy to backend /api/guest/menu so GH pricing, MOV, and
+      // item filtering are applied by the backend (room → guest_house_id → prices).
       else {
-        console.log("[Handler] Routing to 'Get Items' logic (DynamoDB).");
-        const tenantId = event?.queryStringParameters?.tenant_id;
-
-        if (!tenantId) {
-          console.error("[Handler] Missing tenant_id in query params.");
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ message: "Missing tenant_id" }),
-          };
-        }
-
-        try {
-          const items = await getAllItems(tenantId);
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ items }),
-          };
-        } catch (error) {
-          console.error("[Handler] Error in Get Items:", error.message);
-          return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ message: error.message }),
-          };
-        }
+        console.log("[Handler] Routing to 'Get Menu' logic (Backend proxy).");
+        return proxyToBackend('GET', '/api/guest/menu', null, event.queryStringParameters, headers);
       }
   }
 
