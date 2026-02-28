@@ -518,7 +518,7 @@
             if (guestPhoneInput) guestPhoneInput.value = state.guestPhone;
             phoneInput.value = state.guestPhone;
 
-            renderPickupGateIfNeeded();
+            renderPickupGateIfNeeded()
             // Initial fetch by phone (same as checkTableStatus for dine-in)
             await checkPickupStatus(true);
             // Poll and sync status/details every 5s (same as dine-in)
