@@ -216,6 +216,8 @@
                     class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 cart-label">Total</span>
                 <span class="text-lg font-bold text-white leading-none cart-total">₹0</span>
                 <span id="cart-sync-indicator" class="text-[9px] text-gray-300 mt-1 hidden">Syncing...</span>
+                <span id="cart-bar-mov"
+                    class="hidden text-[9px] text-orange-400 font-semibold mt-0.5 leading-none"></span>
             </div>
         </div>
         <div class="flex items-center gap-2 font-bold text-sm text-white">
@@ -286,6 +288,12 @@
             <!-- Footer -->
             <div class="p-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl space-y-3">
                 <!-- Cancel Request Button (shown when pending request exists) -->
+                <!-- Min Order Value notice (shown for GH rooms) -->
+                <div id="cart-modal-mov"
+                    class="hidden w-full py-2.5 px-4 bg-orange-50 border border-orange-200 rounded-xl text-center">
+                    <p id="cart-modal-mov-text" class="text-sm font-semibold text-orange-700"></p>
+                </div>
+
                 <button id="cancel-req-btn" onclick="cancelPendingRequest()"
                     class="hidden w-full py-3 bg-red-50 text-red-700 rounded-xl font-bold text-base border-2 border-red-200 shadow-sm hover:bg-red-100 active:scale-[0.98] transition-all">
                     Cancel Request
@@ -406,6 +414,7 @@
             flowStatus: 'idle', // 'idle' | 'editing' | 'pending' | 'approved'
             filter: { category: 'All', group: 'All', search: '' },
             settings: {},
+            minOrderValue: null, // Minimum order value for this GH (null = no minimum)
             // Pickup specific (phone = identifier, like table_id+hall_id for dine-in)
             isPickupMode: false,
             guestPhone: "",
@@ -427,7 +436,7 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
@@ -545,9 +554,15 @@
                 }
 
                 // 2. Fetch Items (Default GET to Lambda/Sim)
-                const menuRes = await axios.get(`${LAMBDA_URL}?tenant_id=${state.tenantId}`);
+                const menuParams = { tenant_id: state.tenantId };
+                if (state.hallId) menuParams.hall_id = state.hallId;
+                if (state.tableId) menuParams.table_id = state.tableId;
+                const menuRes = await axios.get(`${LAMBDA_URL}`, { params: menuParams });
                 state.items = menuRes.data.items || menuRes.data; // Handle {items: []} or raw []
                 state.itemsMap = state.items.reduce((acc, item) => { acc[item.item_code] = item; return acc; }, {});
+                if (menuRes.data.min_order_value !== undefined) {
+                    state.minOrderValue = Number(menuRes.data.min_order_value);
+                }
 
 
                 renderMenu();
@@ -1267,6 +1282,24 @@
                 if (cartAction) cartAction.textContent = 'View Order';
             }
 
+            // === MIN ORDER VALUE INDICATOR ===
+            const movEl = document.getElementById('cart-bar-mov');
+            if (movEl) {
+                if (state.minOrderValue !== null && hasItems) {
+                    const currentTotal = items.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+                    const remaining = state.minOrderValue - currentTotal;
+                    if (remaining > 0) {
+                        movEl.textContent = `Min order ₹${state.minOrderValue} · Add ₹${remaining} more`;
+                        movEl.classList.remove('hidden');
+                    } else {
+                        movEl.textContent = `Min order ₹${state.minOrderValue} ✓`;
+                        movEl.classList.remove('hidden');
+                    }
+                } else {
+                    movEl.classList.add('hidden');
+                }
+            }
+
             // Also update cart summary at top
             updateCartSummaryTop();
         };
@@ -1360,6 +1393,8 @@
 
             document.getElementById('cart-modal').classList.remove('hidden');
             renderCartModalItems();
+            updateModalMov();
+
             const isRoomOrGuestHouse = state.hallId === 'ROOM_SERVICE' || (state.floor != null && String(state.floor).trim() !== '');
             const labelEl = document.getElementById('guest-details-label');
             if (labelEl) labelEl.innerHTML = isRoomOrGuestHouse ? '<span class="text-red-500"> *</span>' : '';
@@ -1395,6 +1430,30 @@
 
         // --- Updated Cart Modal Rendering ---
 
+        function updateModalMov() {
+            const movModal = document.getElementById('cart-modal-mov');
+            const movModalText = document.getElementById('cart-modal-mov-text');
+            if (!movModal || !movModalText) return;
+            if (state.minOrderValue === null) { movModal.classList.add('hidden'); return; }
+            const cartItems = Object.values(state.cart);
+            const currentTotal = cartItems.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+            const remaining = state.minOrderValue - currentTotal;
+            movModal.classList.remove('hidden');
+            if (remaining > 0) {
+                movModalText.textContent = `Minimum order is ₹${state.minOrderValue}. Add ₹${remaining} more to checkout.`;
+                movModal.classList.remove('bg-green-50', 'border-green-200');
+                movModal.classList.add('bg-orange-50', 'border-orange-200');
+                movModalText.classList.remove('text-green-700');
+                movModalText.classList.add('text-orange-700');
+            } else {
+                movModalText.textContent = `Minimum order of ₹${state.minOrderValue} met ✓`;
+                movModal.classList.remove('bg-orange-50', 'border-orange-200');
+                movModal.classList.add('bg-green-50', 'border-green-200');
+                movModalText.classList.remove('text-orange-700');
+                movModalText.classList.add('text-green-700');
+            }
+        }
+
         function renderCartModalItems() {
             const container = document.getElementById('cart-items-list');
             const submitBtn = document.getElementById('place-order-btn');
@@ -1402,6 +1461,9 @@
 
             const existingSection = document.getElementById('existing-order-section');
             const existingList = document.getElementById('existing-items-list');
+
+            // Update MOV notice in real time
+            updateModalMov();
 
             // Update cancel button visibility
             if (cancelBtn) {
@@ -2047,7 +2109,12 @@
                     alert(res.data.message || 'Failed to submit order'); // Improved error msg
                 }
             } catch (err) {
-                alert('Connection Error');
+                const serverMsg = err?.response?.data?.message || err?.response?.data?.error || null;
+                if (serverMsg) {
+                    alert(serverMsg);
+                } else {
+                    alert('Connection Error. Please try again.');
+                }
                 console.error(err);
             } finally {
                 state.isSyncing = false;
