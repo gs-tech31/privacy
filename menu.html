@@ -279,8 +279,10 @@
                     <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Details <span
                             id="guest-details-label" class="font-normal text-gray-400 capitalize"></span></h3>
                     <input type="text" id="guest-name" placeholder="Your Name"
+                        oninput="state.guestName = this.value; saveGuestIdentity(); renderCartModalItems();"
                         class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
                     <input type="tel" id="guest-phone" placeholder="Phone Number"
+                        oninput="state.guestPhone = this.value; saveGuestIdentity(); renderCartModalItems();"
                         class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
                 </div>
             </div>
@@ -301,7 +303,7 @@
 
                 <button id="place-order-btn" onclick="submitOrder()"
                     class="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-lg shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 px-6">
-                    <span>Checkout</span>
+                    <span>Send Request</span>
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
@@ -430,6 +432,32 @@
                 state.isPickupMode = true;
             }
         })();
+
+        // Persist guest name/phone in localStorage so they survive page refreshes.
+        // Key is scoped to tenant + table/room so different rooms don't share values.
+        const GUEST_IDENTITY_KEY = `dk_guest_${state.tenantId}_${state.tableId}`;
+
+        function saveGuestIdentity() {
+            try {
+                localStorage.setItem(GUEST_IDENTITY_KEY, JSON.stringify({
+                    name: state.guestName || '',
+                    phone: state.guestPhone || '',
+                }));
+            } catch (_) {}
+        }
+
+        function loadGuestIdentity() {
+            try {
+                const saved = localStorage.getItem(GUEST_IDENTITY_KEY);
+                if (!saved) return;
+                const { name, phone } = JSON.parse(saved);
+                if (name) state.guestName = name;
+                if (phone) state.guestPhone = phone;
+            } catch (_) {}
+        }
+
+        // Restore on load
+        loadGuestIdentity();
 
         function markUserActive() {
             state.lastUserAction = Date.now();
@@ -633,10 +661,6 @@
                 return;
             }
 
-            // Show syncing indicator while we talk to the server
-            state.isSyncing = true;
-            updateCartBarUI();
-
             try {
                 const res = await axios.get(`${LAMBDA_URL}/table/status`, {
                     params: { tenant_id: state.tenantId, table_id: state.tableId, hall_id: state.hallId }
@@ -707,6 +731,13 @@
                     // If search returns active_order with items or bill details, that's the live/billed order
                     if (res.data.active_order && (res.data.active_order.items || res.data.active_order.bill_details)) {
                         state.existingOrder = res.data.active_order;
+                        // Pre-populate guest identity from the active order's customer_details
+                        // (authoritative fallback — covers cases where localStorage was cleared)
+                        const cd = res.data.active_order.customer_details;
+                        if (cd) {
+                            if (!state.guestName && cd.name) { state.guestName = cd.name; saveGuestIdentity(); }
+                            if (!state.guestPhone && (cd.phone || cd.phone_no)) { state.guestPhone = cd.phone || cd.phone_no; saveGuestIdentity(); }
+                        }
                     } else {
                         state.existingOrder = null;
                     }
@@ -738,9 +769,6 @@
                 }
             } catch (e) {
                 console.log("Table status check failed silently", e);
-            } finally {
-                state.isSyncing = false;
-                updateCartBarUI();
             }
         }
 
@@ -782,9 +810,6 @@
                 return;
             }
 
-            state.isSyncing = true;
-            updateCartBarUI();
-
             try {
                 const res = await axios.get(`${LAMBDA_URL}/pickup/status`, {
                     params: { tenant_id: state.tenantId, guest_phone: state.guestPhone }
@@ -794,6 +819,22 @@
                     const prevPendingId = state.pendingRequest ? state.pendingRequest.request_id : null;
                     const pending = res.data.pending_request || null;
                     const active = res.data.active_order || null;
+
+                    console.log('[PICKUP_STATUS] ▶ raw response', {
+                        has_pending: !!pending,
+                        pending_id: pending?.request_id,
+                        pending_items: pending?.items?.map(i => `${i.name||i.item_code}×${i.quantity}`) ?? [],
+                        has_active_order: !!active,
+                        active_order_id: active?.order_id,
+                        active_order_items: active?.items?.map(i => `${i.name}×${i.quantity}`) ?? [],
+                        active_bill_total: active?.bill_details?.total,
+                        active_status: active?.status,
+                    });
+                    console.log('[PICKUP_STATUS] ▶ state before update', {
+                        prevPendingId,
+                        cartKeys: Object.keys(state.cart),
+                        existingOrderId: state.existingOrder?.order_id,
+                    });
 
                     // Pending request handling (mirror table logic but keyed by phone)
                     if (pending) {
@@ -843,6 +884,14 @@
                         state.existingOrder = null;
                     }
 
+                    console.log('[PICKUP_STATUS] ◀ state after update', {
+                        existingOrderId: state.existingOrder?.order_id,
+                        existingOrderItems: state.existingOrder?.items?.map(i => `${i.name}×${i.quantity}`) ?? [],
+                        existingOrderBillTotal: state.existingOrder?.bill_details?.total,
+                        cartKeys: Object.keys(state.cart),
+                        pendingRequestId: state.pendingRequest?.request_id,
+                    });
+
                     updateFlowStatus();
 
                     if (!document.getElementById('cart-modal').classList.contains('hidden')) {
@@ -854,9 +903,6 @@
                 }
             } catch (e) {
                 console.log("Pickup status check failed silently", e);
-            } finally {
-                state.isSyncing = false;
-                updateCartBarUI();
             }
         }
 
@@ -1286,7 +1332,11 @@
             const movEl = document.getElementById('cart-bar-mov');
             if (movEl) {
                 if (state.minOrderValue !== null && hasItems) {
-                    const currentTotal = items.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+                    const barCartTotal = items.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+                    const barApprovedTotal = (state.existingOrder && state.existingOrder.items)
+                        ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
+                        : 0;
+                    const currentTotal = barCartTotal + barApprovedTotal;
                     const remaining = state.minOrderValue - currentTotal;
                     if (remaining > 0) {
                         movEl.textContent = `Min order ₹${state.minOrderValue} · Add ₹${remaining} more`;
@@ -1435,8 +1485,11 @@
             const movModalText = document.getElementById('cart-modal-mov-text');
             if (!movModal || !movModalText) return;
             if (state.minOrderValue === null) { movModal.classList.add('hidden'); return; }
-            const cartItems = Object.values(state.cart);
-            const currentTotal = cartItems.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+            const cartTotal = Object.values(state.cart).reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+            const approvedTotal = (state.existingOrder && state.existingOrder.items)
+                ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
+                : 0;
+            const currentTotal = cartTotal + approvedTotal;
             const remaining = state.minOrderValue - currentTotal;
             movModal.classList.remove('hidden');
             if (remaining > 0) {
@@ -1454,6 +1507,33 @@
             }
         }
 
+        function getSubmitBlockReason() {
+            // MOV check (applies to all modes)
+            if (state.minOrderValue !== null) {
+                const cartTotal = Object.values(state.cart)
+                    .reduce((s, { qty, item }) => s + (item.price * qty), 0);
+                const approvedTotal = (state.existingOrder && state.existingOrder.items)
+                    ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
+                    : 0;
+                const total = cartTotal + approvedTotal;
+                if (total < state.minOrderValue) {
+                    const remaining = (state.minOrderValue - total).toFixed(0);
+                    return `Add ₹${remaining} more (min. order ₹${state.minOrderValue})`;
+                }
+            }
+            // Name + phone required for rooms and pickup
+            const isRoomOrGH = state.hallId === 'ROOM_SERVICE' ||
+                (state.floor != null && String(state.floor).trim() !== '');
+            if (isRoomOrGH || state.isPickupMode) {
+                if (!state.guestName || !state.guestName.trim())
+                    return 'Enter your name to continue';
+                const digits = (state.guestPhone || '').replace(/\D/g, '');
+                if (digits.length !== 10)
+                    return 'Enter a valid 10-digit phone number';
+            }
+            return null; // null = no block, allow submit
+        }
+
         function renderCartModalItems() {
             const container = document.getElementById('cart-items-list');
             const submitBtn = document.getElementById('place-order-btn');
@@ -1461,6 +1541,12 @@
 
             const existingSection = document.getElementById('existing-order-section');
             const existingList = document.getElementById('existing-items-list');
+
+            // Sync persisted name/phone into DOM inputs so they're visible after a refresh
+            const nameInput = document.getElementById('guest-name');
+            const phoneInput = document.getElementById('guest-phone');
+            if (nameInput && state.guestName && !nameInput.value) nameInput.value = state.guestName;
+            if (phoneInput && state.guestPhone && !phoneInput.value) phoneInput.value = state.guestPhone;
 
             // Update MOV notice in real time
             updateModalMov();
@@ -1586,12 +1672,20 @@
                     submitBtn.classList.add('opacity-80');
                     submitBtn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></span><span>Sending request...</span></span>';
                 } else {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'opacity-80');
-                    const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
-                    submitBtn.innerHTML = isEditingApprovedPickup
-                        ? `<span>Send request</span>`
-                        : `<span class="inline-flex items-center justify-center gap-2"><span>Checkout</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    const blockReason = getSubmitBlockReason();
+                    if (blockReason) {
+                        submitBtn.disabled = true;
+                        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        submitBtn.classList.remove('opacity-80');
+                        submitBtn.innerHTML = `<span>${blockReason}</span>`;
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'opacity-80');
+                        const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
+                        submitBtn.innerHTML = isEditingApprovedPickup
+                            ? `<span>Send request</span>`
+                            : `<span class="inline-flex items-center justify-center gap-2"><span>Send Request</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                    }
                 }
             }
 
