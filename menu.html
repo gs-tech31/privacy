@@ -775,8 +775,22 @@
                         // (authoritative fallback — covers cases where localStorage was cleared)
                         const cd = res.data.active_order.customer_details;
                         if (cd) {
-                            if (!state.guestName && cd.name) { state.guestName = cd.name; saveGuestIdentity(); }
-                            if (!state.guestPhone && (cd.phone || cd.phone_no)) { state.guestPhone = cd.phone || cd.phone_no; saveGuestIdentity(); }
+                            if (!state.guestName && cd.name) {
+                                state.guestName = cd.name;
+                                saveGuestIdentity();
+                                const ni = document.getElementById('guest-name');
+                                if (ni) ni.value = state.guestName;
+                                console.log('[PREFILL] filled from customer_details: name=' + state.guestName);
+                            }
+                            if (!state.guestPhone && (cd.phone || cd.phone_no)) {
+                                state.guestPhone = cd.phone || cd.phone_no;
+                                saveGuestIdentity();
+                                const pi = document.getElementById('guest-phone');
+                                if (pi) pi.value = state.guestPhone;
+                                console.log('[PREFILL] filled from customer_details: phone=' + state.guestPhone);
+                            }
+                        } else {
+                            console.log('[PREFILL] active_order has no customer_details');
                         }
                     } else {
                         state.existingOrder = null;
