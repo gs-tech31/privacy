@@ -462,10 +462,12 @@
         function loadGuestIdentity() {
             try {
                 const saved = localStorage.getItem(GUEST_IDENTITY_KEY);
-                if (!saved) return;
+                console.log('[PREFILL] loadGuestIdentity: raw localStorage =', saved);
+                if (!saved) { console.log('[PREFILL] loadGuestIdentity: nothing in localStorage'); return; }
                 const { name, phone } = JSON.parse(saved);
                 if (name) state.guestName = name;
                 if (phone) state.guestPhone = phone;
+                console.log('[PREFILL] loadGuestIdentity: loaded name=' + state.guestName + ' phone=' + state.guestPhone);
             } catch (_) {}
         }
 
@@ -680,6 +682,7 @@
                 });
 
                 if (res.data.success) {
+                    console.log('[PREFILL] checkTableStatus response: active_order=', JSON.stringify(res.data.active_order));
                     const prevPendingId = state.pendingRequest ? state.pendingRequest.request_id : null;
 
                     // 1. Pending Request Handling
@@ -697,17 +700,25 @@
                         // Populate guest identity from server if this device has no saved identity.
                         // Covers the case where a second device scans the same QR for an existing order.
                         const pr = res.data.active_order.pending_request;
+                        console.log('[PREFILL] pending_request found: guest_name=' + pr.guest_name + ' guest_phone=' + pr.guest_phone);
+                        console.log('[PREFILL] current state: guestName=' + state.guestName + ' guestPhone=' + state.guestPhone);
                         if (pr.guest_name && !state.guestName) {
                             state.guestName = pr.guest_name;
                             saveGuestIdentity();
                             const nameInput = document.getElementById('guest-name');
+                            console.log('[PREFILL] setting name input, element found=' + !!nameInput);
                             if (nameInput) nameInput.value = state.guestName;
+                        } else {
+                            console.log('[PREFILL] skipping name: pr.guest_name=' + pr.guest_name + ' state.guestName=' + state.guestName);
                         }
                         if (pr.guest_phone && !state.guestPhone) {
                             state.guestPhone = pr.guest_phone;
                             saveGuestIdentity();
                             const phoneInput = document.getElementById('guest-phone');
+                            console.log('[PREFILL] setting phone input, element found=' + !!phoneInput);
                             if (phoneInput) phoneInput.value = state.guestPhone;
+                        } else {
+                            console.log('[PREFILL] skipping phone: pr.guest_phone=' + pr.guest_phone + ' state.guestPhone=' + state.guestPhone);
                         }
 
                         if (!state.isEditingPendingRequest && !state.cartModifiedFromPending) {
@@ -1531,6 +1542,7 @@
         // --- Cart Modal ---
 
         window.openCart = (fromStatusBanner = false) => {
+            console.log('[PREFILL] openCart called, state.guestName=' + state.guestName + ' state.guestPhone=' + state.guestPhone);
             markUserActive();
             // Enable edit mode when opening cart modal (allows editing from modal)
             // Also enable if opening from status banner "View" button
@@ -1645,8 +1657,10 @@
             // Sync persisted name/phone into DOM inputs so they're visible after a refresh
             const nameInput = document.getElementById('guest-name');
             const phoneInput = document.getElementById('guest-phone');
+            console.log('[PREFILL] renderCartModalItems: state.guestName=' + state.guestName + ' state.guestPhone=' + state.guestPhone + ' nameInput.value=' + nameInput?.value + ' phoneInput.value=' + phoneInput?.value);
             if (nameInput && state.guestName) nameInput.value = state.guestName;
             if (phoneInput && state.guestPhone) phoneInput.value = state.guestPhone;
+            console.log('[PREFILL] renderCartModalItems after set: nameInput.value=' + nameInput?.value + ' phoneInput.value=' + phoneInput?.value);
 
             // Update MOV notice in real time
             updateModalMov();
