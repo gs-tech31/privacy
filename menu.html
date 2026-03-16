@@ -1645,8 +1645,8 @@
             // Sync persisted name/phone into DOM inputs so they're visible after a refresh
             const nameInput = document.getElementById('guest-name');
             const phoneInput = document.getElementById('guest-phone');
-            if (nameInput && state.guestName && !nameInput.value) nameInput.value = state.guestName;
-            if (phoneInput && state.guestPhone && !phoneInput.value) phoneInput.value = state.guestPhone;
+            if (nameInput && state.guestName) nameInput.value = state.guestName;
+            if (phoneInput && state.guestPhone) phoneInput.value = state.guestPhone;
 
             // Update MOV notice in real time
             updateModalMov();
