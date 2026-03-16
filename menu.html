@@ -258,6 +258,16 @@
             <!-- Content -->
             <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
 
+                <!-- ETA countdown pill -->
+                <div id="eta-countdown" class="hidden mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-center">
+                    <span id="eta-text" class="text-green-700 font-semibold text-sm"></span>
+                </div>
+
+                <!-- Denial reason banner -->
+                <div id="denial-banner" class="hidden mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <p id="denial-text" class="text-red-700 text-sm"></p>
+                </div>
+
                 <!-- Existing Table Order (Read Only) -->
                 <div id="existing-order-section"
                     class="hidden mb-6 border border-green-100 bg-green-50/50 rounded-2xl p-4">
@@ -423,6 +433,9 @@
             guestName: "",
             isPickupInitialized: false,
             pickupPollingIntervalId: null, // setInterval for polling status by phone
+            etaTimestamp: null,
+            denialReason: null,
+            countdownIntervalId: null,
         };
 
         // Initialize pickup flags from URL (separate QR for pickup)
@@ -464,7 +477,7 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
@@ -681,6 +694,22 @@
                         const newPendingId = res.data.active_order.pending_request.request_id;
                         const isNewPendingRequest = !state.pendingRequest || state.pendingRequest.request_id !== newPendingId;
 
+                        // Populate guest identity from server if this device has no saved identity.
+                        // Covers the case where a second device scans the same QR for an existing order.
+                        const pr = res.data.active_order.pending_request;
+                        if (pr.guest_name && !state.guestName) {
+                            state.guestName = pr.guest_name;
+                            saveGuestIdentity();
+                            const nameInput = document.getElementById('guest-name');
+                            if (nameInput) nameInput.value = state.guestName;
+                        }
+                        if (pr.guest_phone && !state.guestPhone) {
+                            state.guestPhone = pr.guest_phone;
+                            saveGuestIdentity();
+                            const phoneInput = document.getElementById('guest-phone');
+                            if (phoneInput) phoneInput.value = state.guestPhone;
+                        }
+
                         if (!state.isEditingPendingRequest && !state.cartModifiedFromPending) {
                             // Only update cart if this is a new pending request or cart hasn't been modified
                             if (isNewPendingRequest || !state.cartModifiedFromPending) {
@@ -745,6 +774,15 @@
                     // Keep a single high-level status value in sync
                     updateFlowStatus();
 
+                    // ETA countdown
+                    state.etaTimestamp = res.data.active_order?.eta_timestamp || null;
+                    renderEtaCountdown();
+
+                    // Denial reason
+                    state.denialReason = res.data.active_order?.denial_reason
+                        || (!res.data.active_order ? (res.data.denial_reason || null) : null);
+                    renderDenialBanner();
+
                     // 3. Update UI Components
 
                     // If the modal is OPEN, refresh it effectively immediately
@@ -797,6 +835,58 @@
             } else {
                 state.flowStatus = 'idle';
             }
+        }
+
+        function renderEtaCountdown() {
+            const el = document.getElementById('eta-countdown');
+            if (!el) return;
+            if (state.countdownIntervalId) {
+                clearInterval(state.countdownIntervalId);
+                state.countdownIntervalId = null;
+            }
+            if (!state.etaTimestamp || Date.now() >= state.etaTimestamp) {
+                el.classList.add('hidden');
+                return;
+            }
+            function tick() {
+                const remaining = state.etaTimestamp - Date.now();
+                if (remaining <= 0) {
+                    clearInterval(state.countdownIntervalId);
+                    state.countdownIntervalId = null;
+                    el.querySelector('#eta-text').textContent = '🍽️ Your order should be ready now!';
+                    el.classList.remove('hidden');
+                    el.classList.remove('bg-green-50', 'border-green-200');
+                    el.classList.add('bg-orange-50', 'border-orange-200');
+                    el.querySelector('#eta-text').classList.remove('text-green-700');
+                    el.querySelector('#eta-text').classList.add('text-orange-700', 'font-bold');
+                    return;
+                }
+                const mins = Math.floor(remaining / 60000);
+                const secs = Math.floor((remaining % 60000) / 1000);
+                el.querySelector('#eta-text').textContent =
+                    `Order ready in ${mins}m ${String(secs).padStart(2, '0')}s`;
+            }
+            el.classList.remove('bg-orange-50', 'border-orange-200');
+            el.classList.add('bg-green-50', 'border-green-200');
+            el.querySelector('#eta-text').classList.remove('text-orange-700', 'font-bold');
+            el.querySelector('#eta-text').classList.add('text-green-700');
+            tick();
+            el.classList.remove('hidden');
+            state.countdownIntervalId = setInterval(tick, 1000);
+        }
+
+        function renderDenialBanner() {
+            const el = document.getElementById('denial-banner');
+            if (!el) return;
+            if (!state.denialReason) {
+                el.classList.add('hidden');
+                return;
+            }
+            const textEl = document.getElementById('denial-text');
+            if (textEl) {
+                textEl.innerHTML = `Your last order was declined for the reason: <span class="font-semibold">"${state.denialReason}"</span>`;
+            }
+            el.classList.remove('hidden');
         }
 
         // --- Pickup Status (by phone) ---
@@ -1444,6 +1534,8 @@
             document.getElementById('cart-modal').classList.remove('hidden');
             renderCartModalItems();
             updateModalMov();
+            renderEtaCountdown();
+            renderDenialBanner();
 
             const isRoomOrGuestHouse = state.hallId === 'ROOM_SERVICE' || (state.floor != null && String(state.floor).trim() !== '');
             const labelEl = document.getElementById('guest-details-label');
@@ -1484,7 +1576,7 @@
             const movModal = document.getElementById('cart-modal-mov');
             const movModalText = document.getElementById('cart-modal-mov-text');
             if (!movModal || !movModalText) return;
-            if (state.minOrderValue === null) { movModal.classList.add('hidden'); return; }
+            if (!state.minOrderValue || state.minOrderValue <= 0 || isNaN(state.minOrderValue)) { movModal.classList.add('hidden'); return; }
             const cartTotal = Object.values(state.cart).reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
             const approvedTotal = (state.existingOrder && state.existingOrder.items)
                 ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
@@ -2193,6 +2285,10 @@
                     closeCart();
                     document.getElementById('confirm-dialog').classList.remove('hidden');
                     document.getElementById('confirm-dialog').classList.add('flex');
+                    // Clear stale denial on successful submit
+                    state.denialReason = null;
+                    renderDenialBanner();
+
                     // Force immediate status check
                     if (state.isPickupMode) {
                         checkPickupStatus(true);
