@@ -1044,6 +1044,7 @@
                 });
 
                 if (res.data.success) {
+                    if (btn) btn.innerHTML = 'Cancel Request';
                     // Clear pending request and cart immediately
                     state.pendingRequest = null;
                     state.isEditingPendingRequest = false;
@@ -1058,9 +1059,11 @@
                     // Refresh status to sync with backend
                     if (state.isPickupMode) checkPickupStatus(true); else checkTableStatus(true);
                 } else {
+                    if (btn) btn.innerHTML = 'Cancel Request';
                     alert('Failed to cancel request');
                 }
             } catch (e) {
+                if (btn) btn.innerHTML = 'Cancel Request';
                 console.error(e);
                 alert('Connection error');
             }
