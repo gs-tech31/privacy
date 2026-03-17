@@ -1923,12 +1923,17 @@
                             ${approvedBillDetails.discount > 0 ? `
                             <div class="flex justify-between items-center text-xs mb-1">
                                 <span class="text-gray-300">Discount</span>
-                                <span class="text-red-300">-₹${Number(approvedBillDetails.discount || 0).toFixed(2)}</span>
+                                <span class="text-red-300">₹${Number(approvedBillDetails.discount || 0).toFixed(2)}</span>
                             </div>` : ''}
-                            ${(approvedBillDetails.cgst > 0 || approvedBillDetails.sgst > 0) ? `
+                            ${Number(approvedBillDetails.cgst) > 0 ? `
                             <div class="flex justify-between items-center text-xs mb-1">
-                                <span class="text-gray-300">Tax (CGST + SGST)</span>
-                                <span class="text-gray-100">₹${(Number(approvedBillDetails.cgst || 0) + Number(approvedBillDetails.sgst || 0)).toFixed(2)}</span>
+                                <span class="text-gray-300">CGST${approvedBillDetails.cgst_rate ? ` (${approvedBillDetails.cgst_rate}%)` : ''}</span>
+                                <span class="text-gray-100">₹${Number(approvedBillDetails.cgst).toFixed(2)}</span>
+                            </div>` : ''}
+                            ${Number(approvedBillDetails.sgst) > 0 ? `
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-gray-300">SGST${approvedBillDetails.sgst_rate ? ` (${approvedBillDetails.sgst_rate}%)` : ''}</span>
+                                <span class="text-gray-100">₹${Number(approvedBillDetails.sgst).toFixed(2)}</span>
                             </div>` : ''}
                             <div class="border-t border-gray-700 my-2"></div>
                             <div class="flex justify-between items-center text-sm font-semibold">
