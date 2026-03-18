@@ -1888,11 +1888,29 @@
                 state.pendingRequest.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0) : 0;
             // Prefer backend bill_details for approved/billed totals and discount breakdown
             const approvedBillDetails = state.existingOrder && state.existingOrder.bill_details ? state.existingOrder.bill_details : null;
+
+            // Compute GST client-side from settings rates when bill hasn't been generated yet
+            const _cgstRate = parseFloat(state.settings.cgst) || 0;
+            const _sgstRate = parseFloat(state.settings.sgst) || 0;
+            const _rawSubTotal = Number(approvedBillDetails?.sub_total || 0);
+            const _rawDiscount = Number(approvedBillDetails?.discount || 0);
+            const _effectiveBase = _rawSubTotal - _rawDiscount;
+            const displayCgst = Number(approvedBillDetails?.cgst || 0) > 0
+                ? Number(approvedBillDetails.cgst)
+                : (_cgstRate > 0 ? Math.round(_effectiveBase * (_cgstRate / 100) * 100) / 100 : 0);
+            const displaySgst = Number(approvedBillDetails?.sgst || 0) > 0
+                ? Number(approvedBillDetails.sgst)
+                : (_sgstRate > 0 ? Math.round(_effectiveBase * (_sgstRate / 100) * 100) / 100 : 0);
+            const displayCgstRate = approvedBillDetails?.cgst_rate || (_cgstRate > 0 ? _cgstRate : null);
+            const displaySgstRate = approvedBillDetails?.sgst_rate || (_sgstRate > 0 ? _sgstRate : null);
+
             const approvedTotal = approvedBillDetails && typeof approvedBillDetails.total === 'number'
                 ? approvedBillDetails.total
-                : (state.existingOrder && state.existingOrder.items
-                    ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0)
-                    : 0);
+                : approvedBillDetails
+                    ? (_effectiveBase + displayCgst + displaySgst) || _rawSubTotal
+                    : (state.existingOrder && state.existingOrder.items
+                        ? state.existingOrder.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 0)), 0)
+                        : 0);
             // Total order value = approved (to pay now) + pending (future) – excludes unsent new items
             const totalOrderValue = approvedTotal + pendingTotalForCombined;
 
@@ -1925,15 +1943,15 @@
                                 <span class="text-gray-300">Discount</span>
                                 <span class="text-red-300">₹${Number(approvedBillDetails.discount || 0).toFixed(2)}</span>
                             </div>` : ''}
-                            ${Number(approvedBillDetails.cgst) > 0 ? `
+                            ${displayCgst > 0 ? `
                             <div class="flex justify-between items-center text-xs mb-1">
-                                <span class="text-gray-300">CGST${approvedBillDetails.cgst_rate ? ` (${approvedBillDetails.cgst_rate}%)` : ''}</span>
-                                <span class="text-gray-100">₹${Number(approvedBillDetails.cgst).toFixed(2)}</span>
+                                <span class="text-gray-300">CGST${displayCgstRate ? ` (${displayCgstRate}%)` : ''}</span>
+                                <span class="text-gray-100">₹${displayCgst.toFixed(2)}</span>
                             </div>` : ''}
-                            ${Number(approvedBillDetails.sgst) > 0 ? `
+                            ${displaySgst > 0 ? `
                             <div class="flex justify-between items-center text-xs mb-1">
-                                <span class="text-gray-300">SGST${approvedBillDetails.sgst_rate ? ` (${approvedBillDetails.sgst_rate}%)` : ''}</span>
-                                <span class="text-gray-100">₹${Number(approvedBillDetails.sgst).toFixed(2)}</span>
+                                <span class="text-gray-300">SGST${displaySgstRate ? ` (${displaySgstRate}%)` : ''}</span>
+                                <span class="text-gray-100">₹${displaySgst.toFixed(2)}</span>
                             </div>` : ''}
                             <div class="border-t border-gray-700 my-2"></div>
                             <div class="flex justify-between items-center text-sm font-semibold">
