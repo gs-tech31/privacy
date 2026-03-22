@@ -1,71 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Bhagavad Gita App</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕉️</text></svg>">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GS Tech — Web, mobile, and AI-driven solutions for modern businesses. Explore our services and products.">
+  <title>GS Tech — Digital Experiences That Scale</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="home.css">
+  <link rel="icon" type="image/png" href="assets/gs-tech-logo.png">
 </head>
 <body>
-    <div class="container">
-        <div class="header-section">
-            <h1>Privacy Policy</h1>
-            <p class="subtitle">Bhagavad Gita App - Sacred & Secure</p>
-            <div class="last-updated">Last Updated: November 4, 2024</div>
-        </div>
-        
-        <div class="content-section">
-            <div class="intro-text">
-                Thank you for choosing to use our Bhagavad Gita app. Your privacy is very important to us. We want you to understand that we do not collect any personal data or sensitive information from our users, regardless of their age. Please read this policy carefully to understand how our app operates and how it affects your data and device.
-            </div>
-            
-            <div class="policy-card">
-                <h2>1. No Personal Data Collection</h2>
-                <p>Our app does not collect, store, or share any personal information about you, including name, email address, location, or any other personal details. This applies to all users, regardless of age. Your privacy is respected and safeguarded as we do not require or store any personal data from you.</p>
-            </div>
-            
-            <div class="policy-card">
-                <h2>2. Age Requirement</h2>
-                <p>The Bhagavad Gita app is accessible to users of all ages, including those below 13 years of age, as it is a dharmic (spiritual) application. We believe in making sacred texts available to everyone, irrespective of age.</p>
-            </div>
-            
-            <div class="policy-card">
-                <h2>3. Use of Device Storage and Cache</h2>
-                <p>To enhance the user experience, our app may store some content locally on your device. This caching helps reduce loading times and allows you to view content offline. However, this data is only stored on your device and is not shared or sent to any external servers.</p>
-            </div>
-            
-            <div class="policy-card">
-                <h2>4. Access to Device Features</h2>
-                <ul>
-                    <li><strong>Speakers:</strong> Our app utilizes the speaker feature of your device to play audio explanations and recitations of verses, if you choose to listen.</li>
-                    <li><strong>Storage:</strong> As mentioned, we use your device's storage solely for caching content. This does not include any collection of your personal files or data.</li>
-                </ul>
-            </div>
-            
-            <div class="policy-card">
-                <h2>5. No Third-Party Data Sharing</h2>
-                <p>Since we do not collect any user data, there is no data to share or sell to third parties. Our app is entirely standalone and functions independently without any third-party integrations that would collect or access your information.</p>
-            </div>
-            
-            <div class="policy-card">
-                <h2>6. Changes to This Privacy Policy</h2>
-                <p>We may update this Privacy Policy periodically to reflect changes in app functionality or legal requirements. Any updates will be posted within the app. We encourage users to review this policy periodically to stay informed.</p>
-            </div>
-            
-            <div class="agreement-text">
-                By using our app, you acknowledge and agree to this Privacy Policy.
-            </div>
-        </div>
+  <div class="page-bg" aria-hidden="true">
+    <div class="page-bg__mesh"></div>
+  </div>
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
 
-        <div class="contact-section">
-            <h2 style="color: white; margin-bottom: 20px;">Contact Us</h2>
-            <div class="contact-card">
-                <p>If you have any questions or concerns about this Privacy Policy or the use of your data, please contact us at:</p>
-                <p><a href="mailto:gstechuser@gmail.com">gstechuser@gmail.com</a></p>
-            </div>
-        </div>
+  <header class="nav" id="nav" role="banner">
+    <div class="nav__inner">
+      <a class="nav__brand" href="#hero" aria-label="GS Tech home">
+        <img class="nav__logo" src="assets/gs-tech-logo.png" width="40" height="40" alt="" decoding="async">
+        <span class="nav__logo-text">GS Tech</span>
+      </a>
+      <button class="nav__toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav__links" id="nav-menu" role="navigation" aria-label="Primary">
+        <li><a class="nav__link nav__link--active" href="#hero">Home</a></li>
+        <li><a class="nav__link" href="#services">Services</a></li>
+        <li><a class="nav__link" href="#products">Products</a></li>
+        <li><a class="nav__link" href="#about">About Us</a></li>
+        <li><a class="nav__link" href="#contact">Contact</a></li>
+      </ul>
     </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero" aria-labelledby="hero-title">
+      <div class="hero__blob hero__blob--1" aria-hidden="true"></div>
+      <div class="hero__blob hero__blob--2" aria-hidden="true"></div>
+      <div class="hero__inner">
+        <div class="hero__content">
+          <p class="section__eyebrow reveal">Welcome</p>
+          <h1 class="hero__title reveal reveal-delay-1" id="hero-title">Building Digital Experiences That Scale</h1>
+          <p class="hero__sub reveal reveal-delay-2">
+            We craft powerful web, mobile, and AI-driven solutions for modern businesses.
+          </p>
+          <div class="hero__ctas reveal reveal-delay-3">
+            <a class="btn btn--primary" href="#services">Explore Services</a>
+            <a class="btn btn--ghost" href="#products">View Products</a>
+          </div>
+        </div>
+      </div>
+      <div class="hero__scroll" aria-hidden="true">
+        <span>Scroll</span>
+        <div class="hero__scroll-line"></div>
+      </div>
+    </section>
+
+    <section class="section" id="services" aria-labelledby="services-title">
+      <div class="section__inner">
+        <p class="section__eyebrow reveal">What we do</p>
+        <h2 class="section__title reveal reveal-delay-1" id="services-title">Services</h2>
+        <p class="section__lead reveal reveal-delay-2">
+          End-to-end delivery from concept to launch — engineered for performance and growth.
+        </p>
+        <div class="services__grid">
+          <article class="service-card reveal reveal-delay-1">
+            <div class="service-card__icon" aria-hidden="true">🌐</div>
+            <h3>Web Development</h3>
+            <p>Fast, secure, and scalable web platforms tailored to your brand and users.</p>
+          </article>
+          <article class="service-card reveal reveal-delay-2">
+            <div class="service-card__icon" aria-hidden="true">📱</div>
+            <h3>Mobile App Development</h3>
+            <p>Native-quality experiences on iOS and Android with polished UX.</p>
+          </article>
+          <article class="service-card reveal reveal-delay-3">
+            <div class="service-card__icon" aria-hidden="true">🤖</div>
+            <h3>AI Integration</h3>
+            <p>Embed intelligent features that automate workflows and delight customers.</p>
+          </article>
+          <article class="service-card reveal reveal-delay-4">
+            <div class="service-card__icon" aria-hidden="true">💬</div>
+            <h3>Chatbot Integration</h3>
+            <p>Conversational assistants that feel natural and integrate with your stack.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="products" aria-labelledby="products-title">
+      <div class="section__inner">
+        <p class="section__eyebrow reveal">Portfolio</p>
+        <h2 class="section__title reveal reveal-delay-1" id="products-title">Products</h2>
+        <p class="section__lead reveal reveal-delay-2">
+          Apps and platforms we build — ready to explore or download.
+        </p>
+        <div class="products__grid">
+          <article class="product-card reveal reveal-delay-1">
+            <span class="product-card__tag">Platform</span>
+            <h3>DigiKhana</h3>
+            <p class="product-card__desc">The Ultimate Restaurant Management Ecosystem</p>
+            <p class="product-card__extra">
+              DigiKhana is not just a POS; it’s a complete ecosystem designed to streamline every aspect of your restaurant business, from the kitchen to the customer’s table, and right into the owner’s pocket.
+            </p>
+            <a class="product-card__cta" href="https://digikhana-official.gstechs.in/" target="_blank" rel="noopener noreferrer">
+              Visit
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg>
+            </a>
+          </article>
+          <article class="product-card reveal reveal-delay-2">
+            <span class="product-card__tag">App</span>
+            <h3>Bhagavad Gita: Listen &amp; Learn</h3>
+            <p class="product-card__desc">Experience the Bhagavad Gita like never before — interactive and multilingual.</p>
+            <p class="product-card__extra">
+              Full Bhagavad Gita — your way. Read every shloka in Sanskrit with translations in Hindi, English, Tamil, and Telugu. Switch seamlessly between languages.
+            </p>
+            <a class="product-card__cta" href="https://play.google.com/store/apps/details?id=com.prasad777.BhagavadGitaApp" target="_blank" rel="noopener noreferrer">
+              Download
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg>
+            </a>
+          </article>
+          <article class="product-card reveal reveal-delay-3">
+            <span class="product-card__tag">AI</span>
+            <h3>SupX</h3>
+            <p class="product-card__desc">Chat with anyone. Create your perfect persona.</p>
+            <p class="product-card__extra">
+              Human-like conversations powered by advanced AI. Create and chat with unique AI personas.
+            </p>
+            <a class="product-card__cta" href="https://play.google.com/store/apps/details?id=com.echoverse" target="_blank" rel="noopener noreferrer">
+              Download
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg>
+            </a>
+          </article>
+          <article class="product-card reveal reveal-delay-4">
+            <span class="product-card__tag">News</span>
+            <h3>What The News!</h3>
+            <p class="product-card__desc">Stay updated with short, reliable summaries and daily highlights.</p>
+            <p class="product-card__extra">
+              Real-time breaking news, trending stories, and to-the-point summaries from trusted sources.
+            </p>
+            <a class="product-card__cta" href="https://play.google.com/store/apps/details?id=com.wtn" target="_blank" rel="noopener noreferrer">
+              Download
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg>
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--about" id="about" aria-labelledby="about-title">
+      <div class="section__inner">
+        <p class="section__eyebrow reveal">Who we are</p>
+        <h2 class="section__title reveal reveal-delay-1" id="about-title">About Us</h2>
+        <p class="section__lead section__lead--about reveal reveal-delay-2">
+          We partner with businesses that want reliable technology without the noise — clear execution, honest timelines, and products built to last.
+        </p>
+        <div class="about-panel reveal reveal-delay-3">
+          <div class="about-panel__intro">
+            <p class="about-panel__lead">
+              We are a technology-driven company focused on delivering scalable digital solutions, combining innovation with performance.
+            </p>
+            <div class="about-panel__columns">
+              <p>
+                From web and mobile apps to AI-powered experiences, we design and ship software that fits how your team actually works. Whether you are launching a new product or modernising operations, we bring engineering discipline and a product mindset to every engagement.
+              </p>
+              <p>
+                Our own apps — in hospitality, learning, AI chat, and news — reflect the same standards we apply for clients: fast, intuitive interfaces, thoughtful architecture, and ongoing attention to quality. We believe great software should feel invisible where it matters and memorable where it counts.
+              </p>
+            </div>
+          </div>
+          <ul class="about-pillars" aria-label="What we stand for">
+            <li class="about-pillar">
+              <span class="about-pillar__label">Build to scale</span>
+              <span class="about-pillar__text">Architectures and codebases that grow with your users and revenue.</span>
+            </li>
+            <li class="about-pillar">
+              <span class="about-pillar__label">Ship with clarity</span>
+              <span class="about-pillar__text">Transparent communication, measurable milestones, and no surprises.</span>
+            </li>
+            <li class="about-pillar">
+              <span class="about-pillar__label">Stay curious</span>
+              <span class="about-pillar__text">We invest in new tools and ideas so your roadmap stays ahead of the curve.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact" aria-labelledby="contact-title">
+      <div class="section__inner">
+        <p class="section__eyebrow reveal">Get in touch</p>
+        <div class="contact__layout">
+          <div class="contact__intro reveal">
+            <h2 id="contact-title">Let’s Build Something Together</h2>
+            <p>Reach us by call, WhatsApp, or email — or send a message and we’ll respond as soon as we can.</p>
+            <ul class="contact-channels" aria-label="Contact options">
+              <li>
+                <a class="contact-channel" href="tel:+917060783074">
+                  <span class="contact-channel__icon" aria-hidden="true">📞</span>
+                  <span class="contact-channel__body">
+                    <span class="contact-channel__name">Call</span>
+                    <span class="contact-channel__value">+91 7060783074</span>
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a class="contact-channel" href="https://wa.me/917060783074" target="_blank" rel="noopener noreferrer">
+                  <span class="contact-channel__icon" aria-hidden="true">💬</span>
+                  <span class="contact-channel__body">
+                    <span class="contact-channel__name">WhatsApp</span>
+                    <span class="contact-channel__value">+91 7060783074</span>
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a class="contact-channel" href="mailto:gstech.info.24@gmail.com">
+                  <span class="contact-channel__icon" aria-hidden="true">✉️</span>
+                  <span class="contact-channel__body">
+                    <span class="contact-channel__name">Email</span>
+                    <span class="contact-channel__value">gstech.info.24@gmail.com</span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+            <div class="contact__social">
+              <a class="social-link" href="https://digikhana-official.gstechs.in/" target="_blank" rel="noopener noreferrer">DigiKhana</a>
+            </div>
+          </div>
+          <form class="contact-form reveal reveal-delay-1" id="contact-form" novalidate>
+            <div class="form-group">
+              <label for="contact-name">Name</label>
+              <input id="contact-name" name="name" type="text" autocomplete="name" required placeholder="Your name">
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email</label>
+              <input id="contact-email" name="email" type="email" autocomplete="email" required placeholder="you@company.com">
+            </div>
+            <div class="form-group">
+              <label for="contact-message">Message</label>
+              <textarea id="contact-message" name="message" required placeholder="How can we help?"></textarea>
+            </div>
+            <button class="btn btn--primary" type="submit">Send message</button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="footer__inner">
+      <div>
+        <div class="footer__brand">
+          <img src="assets/gs-tech-logo.png" width="36" height="36" alt="" decoding="async" loading="lazy">
+          <span class="nav__logo-text">GS Tech</span>
+        </div>
+        <p class="footer__tagline">
+          Web, mobile, and AI solutions for teams that want to move fast.
+        </p>
+      </div>
+      <ul class="footer__links">
+        <li><a href="#services">Services</a></li>
+        <li><a href="#products">Products</a></li>
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="privacy.html">Privacy</a></li>
+      </ul>
+    </div>
+    <p class="footer__copy">© <span id="year"></span> GS Tech. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+  <script src="home.js" defer></script>
 </body>
 </html>
-
