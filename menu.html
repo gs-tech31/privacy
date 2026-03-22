@@ -730,10 +730,11 @@
                                 state.cart = {};
                                 state.pendingRequest.items.forEach(pi => {
                                     const originalItem = state.itemsMap[pi.item_code] || pi;
-                                    state.cart[pi.item_code] = {
-                                        qty: pi.quantity,
-                                        item: originalItem
-                                    };
+                                    const cartKey = pi.portion ? `${pi.item_code}::${pi.portion}` : String(pi.item_code);
+                                    const price = pi.portion
+                                        ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
+                                        : (pi.price ?? originalItem.price);
+                                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
                                 });
 
                                 // Reset modification flag when we sync from server
@@ -972,10 +973,11 @@
                                 state.cart = {};
                                 (pending.items || []).forEach(pi => {
                                     const originalItem = state.itemsMap[pi.item_code] || pi;
-                                    state.cart[pi.item_code] = {
-                                        qty: pi.quantity,
-                                        item: originalItem
-                                    };
+                                    const cartKey = pi.portion ? `${pi.item_code}::${pi.portion}` : String(pi.item_code);
+                                    const price = pi.portion
+                                        ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
+                                        : (pi.price ?? originalItem.price);
+                                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
                                 });
 
                                 state.cartModifiedFromPending = false;
@@ -1080,12 +1082,13 @@
             // This allows user to modify quantities
             state.pendingRequest.items.forEach(pi => {
                 const originalItem = state.itemsMap[pi.item_code] || pi;
+                const cartKey = pi.portion ? `${pi.item_code}::${pi.portion}` : String(pi.item_code);
                 // Only update if not already in cart (preserve any user modifications)
-                if (!state.cart[pi.item_code]) {
-                    state.cart[pi.item_code] = {
-                        qty: pi.quantity,
-                        item: originalItem
-                    };
+                if (!state.cart[cartKey]) {
+                    const price = pi.portion
+                        ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
+                        : (pi.price ?? originalItem.price);
+                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
                 }
             });
 
@@ -1100,10 +1103,17 @@
 
         window.updateMenuQuantitiesOnly = () => {
             state.items.forEach(item => {
-                const qty = state.cart[item.item_code]?.qty || 0;
-                const wrapper = document.getElementById(`qty-wrapper-${item.item_code}`);
-                if (wrapper) {
-                    wrapper.innerHTML = getQtyButtonHTML(item.item_code, item.sold_out);
+                const portionPrices = item.portion_prices && Object.keys(item.portion_prices).length > 0 ? item.portion_prices : null;
+                if (portionPrices) {
+                    Object.keys(portionPrices).forEach(portion => {
+                        const cartKey = `${item.item_code}::${portion}`;
+                        const wrapper = document.getElementById(`qty-wrapper-${cartKey}`);
+                        if (wrapper) wrapper.innerHTML = getQtyButtonHTML(cartKey, item.sold_out);
+                    });
+                } else {
+                    const cartKey = String(item.item_code);
+                    const wrapper = document.getElementById(`qty-wrapper-${cartKey}`);
+                    if (wrapper) wrapper.innerHTML = getQtyButtonHTML(cartKey, item.sold_out);
                 }
             });
         };
@@ -1220,61 +1230,99 @@
             const div = document.createElement('div');
             const isSoldOut = item.sold_out;
             const imgUrl = `https://digikhana-production.s3.amazonaws.com/item/${state.tenantId}/${item.item_code}.jpg`;
+            const portionPrices = item.portion_prices && Object.keys(item.portion_prices).length > 0 ? item.portion_prices : null;
 
             // Using a Key for easy DOM update lookup
             div.id = `card-${item.item_code}`;
 
-            // Make card clickable (except when sold out)
-            if (!isSoldOut) {
+            // Non-portion items: whole card is clickable
+            if (!isSoldOut && !portionPrices) {
                 div.style.cursor = 'pointer';
                 div.onclick = (e) => {
-                    // Don't trigger if clicking on quantity buttons
                     if (!e.target.closest(`#qty-wrapper-${item.item_code}`)) {
-                        updateCart(item.item_code, 1);
+                        updateCart(String(item.item_code), 1);
                     }
                 };
             }
 
-            div.className = `bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-4 ${isSoldOut ? 'opacity-60' : 'hover:shadow-md transition-shadow'} ${!isSoldOut ? 'cursor-pointer' : ''}`;
+            div.className = `bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-4 ${isSoldOut ? 'opacity-60' : 'hover:shadow-md transition-shadow'} ${!isSoldOut && !portionPrices ? 'cursor-pointer' : ''}`;
 
-            div.innerHTML = `
-                <div class="h-24 w-24 flex-shrink-0 rounded-xl bg-gray-100 overflow-hidden relative">
-                     <img src="${imgUrl}" class="w-full h-full object-cover" 
-                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23eee%22/><text x=%2250%22 y=%2250%22 font-family=%22Arial%22 font-size=%2220%22 fill=%22%23bbb%22 text-anchor=%22middle%22 dy=%22.3em%22>No Image</text></svg>'">
-                     ${isSoldOut ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[10px] font-bold">SOLD OUT</div>' : ''}
-                </div>
-                <div class="flex-1 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start">
-                             <h3 class="font-bold text-gray-900 leading-tight mb-1 text-[15px]">${item.name}</h3>
-                             ${item.is_veg === true ? '<div class="w-3 h-3 border border-green-600 flex items-center justify-center p-[1px] rounded-[2px] ml-1"><div class="w-1.5 h-1.5 bg-green-600 rounded-full"></div></div>' : (item.is_veg === false ? '<div class="w-3 h-3 border border-red-600 flex items-center justify-center p-[1px] rounded-[2px] ml-1"><div class="w-1.5 h-1.5 bg-red-600 rounded-full"></div></div>' : '')}
+            const vegDot = item.is_veg === true
+                ? '<div class="w-3 h-3 border border-green-600 flex items-center justify-center p-[1px] rounded-[2px] ml-1 flex-shrink-0"><div class="w-1.5 h-1.5 bg-green-600 rounded-full"></div></div>'
+                : (item.is_veg === false
+                    ? '<div class="w-3 h-3 border border-red-600 flex items-center justify-center p-[1px] rounded-[2px] ml-1 flex-shrink-0"><div class="w-1.5 h-1.5 bg-red-600 rounded-full"></div></div>'
+                    : '');
+
+            if (portionPrices) {
+                // --- PORTION ITEM: show each portion as its own row ---
+                const portionRows = Object.entries(portionPrices).map(([portion, price]) => {
+                    const cartKey = `${item.item_code}::${portion}`;
+                    return `
+                        <div class="flex items-center justify-between gap-2 py-1 border-b border-gray-50 last:border-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-[13px] font-semibold text-gray-700 truncate">${portion}</span>
+                                <span class="text-orange-600 font-bold text-[13px] flex-shrink-0">₹${price}</span>
+                            </div>
+                            <div id="qty-wrapper-${cartKey}" onclick="event.stopPropagation()">
+                                ${getQtyButtonHTML(cartKey, isSoldOut)}
+                            </div>
                         </div>
-                        <p class="font-bold text-gray-900 text-sm">₹${item.price}</p>
+                    `;
+                }).join('');
+
+                div.innerHTML = `
+                    <div class="h-24 w-24 flex-shrink-0 rounded-xl bg-gray-100 overflow-hidden relative">
+                         <img src="${imgUrl}" class="w-full h-full object-cover"
+                              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23eee%22/><text x=%2250%22 y=%2250%22 font-family=%22Arial%22 font-size=%2220%22 fill=%22%23bbb%22 text-anchor=%22middle%22 dy=%22.3em%22>No Image</text></svg>'">
+                         ${isSoldOut ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[10px] font-bold">SOLD OUT</div>' : ''}
                     </div>
-                    
-                    <div class="flex justify-end mt-2" id="qty-wrapper-${item.item_code}" onclick="event.stopPropagation()">
-                        <!-- Injected by updateItemQtyUI -->
-                        ${getQtyButtonHTML(item.item_code, isSoldOut)}
+                    <div class="flex-1 flex flex-col justify-between min-w-0">
+                        <div class="flex items-start gap-1 mb-2">
+                            <h3 class="font-bold text-gray-900 leading-tight text-[15px]">${item.name}</h3>
+                            ${vegDot}
+                        </div>
+                        <div class="space-y-0">${portionRows}</div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                // --- REGULAR ITEM ---
+                div.innerHTML = `
+                    <div class="h-24 w-24 flex-shrink-0 rounded-xl bg-gray-100 overflow-hidden relative">
+                         <img src="${imgUrl}" class="w-full h-full object-cover"
+                              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23eee%22/><text x=%2250%22 y=%2250%22 font-family=%22Arial%22 font-size=%2220%22 fill=%22%23bbb%22 text-anchor=%22middle%22 dy=%22.3em%22>No Image</text></svg>'">
+                         ${isSoldOut ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[10px] font-bold">SOLD OUT</div>' : ''}
+                    </div>
+                    <div class="flex-1 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                 <h3 class="font-bold text-gray-900 leading-tight mb-1 text-[15px]">${item.name}</h3>
+                                 ${vegDot}
+                            </div>
+                            <p class="font-bold text-gray-900 text-sm">₹${item.price}</p>
+                        </div>
+                        <div class="flex justify-end mt-2" id="qty-wrapper-${item.item_code}" onclick="event.stopPropagation()">
+                            ${getQtyButtonHTML(String(item.item_code), isSoldOut)}
+                        </div>
+                    </div>
+                `;
+            }
             return div;
         }
 
-        function getQtyButtonHTML(code, isSoldOut) {
+        // cartKey = itemCode for regular items, "itemCode::portion" for portion items
+        function getQtyButtonHTML(cartKey, isSoldOut) {
             if (isSoldOut) return `<button disabled class="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg cursor-not-allowed">Sold Out</button>`;
 
-            const qty = state.cart[code]?.qty || 0;
+            const qty = state.cart[cartKey]?.qty || 0;
+            const escapedKey = cartKey.replace(/'/g, "\\'");
             if (qty === 0) {
-                // Always allow adding items
-                return `<button onclick="updateCart('${code}', 1)" class="bg-orange-50 text-orange-600 font-extrabold text-xs px-5 py-2 rounded-xl shadow-sm border border-orange-100 active:bg-orange-100 uppercase tracking-wide">ADD</button>`;
+                return `<button onclick="updateCart('${escapedKey}', 1)" class="bg-orange-50 text-orange-600 font-extrabold text-xs px-5 py-2 rounded-xl shadow-sm border border-orange-100 active:bg-orange-100 uppercase tracking-wide">ADD</button>`;
             } else {
-                // Always show editable quantity controls
                 return `
                     <div class="flex items-center bg-gray-900 text-white rounded-lg shadow-md h-8">
-                        <button onclick="updateCart('${code}', -1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 active:bg-white/20 rounded-l-lg">-</button>
+                        <button onclick="updateCart('${escapedKey}', -1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 active:bg-white/20 rounded-l-lg">-</button>
                         <span class="w-6 text-center font-bold text-sm">${qty}</span>
-                        <button onclick="updateCart('${code}', 1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 active:bg-white/20 rounded-r-lg">+</button>
+                        <button onclick="updateCart('${escapedKey}', 1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 active:bg-white/20 rounded-r-lg">+</button>
                     </div>
                 `;
             }
@@ -1321,32 +1369,39 @@
 
         // --- Interaction ---
 
-        window.updateCart = (itemCode, change, allowFromTopView = false) => {
+        window.updateCart = (cartKey, change, allowFromTopView = false) => {
             markUserActive();
             // If pending request exists and not in edit mode, enable edit mode automatically
-            // This allows editing from anywhere (menu items, cart summary, cart modal)
             if (state.pendingRequest && !state.isEditingPendingRequest) {
                 state.isEditingPendingRequest = true;
             }
 
+            // Parse portion from cartKey (format: "itemCode::portion" or just "itemCode")
+            const sepIdx = String(cartKey).indexOf('::');
+            const itemCode = sepIdx >= 0 ? cartKey.substring(0, sepIdx) : cartKey;
+            const portion = sepIdx >= 0 ? cartKey.substring(sepIdx + 2) : null;
+
             // If item is not in cart, and we're trying to decrement, do nothing
-            if (!state.cart[itemCode] && change < 0) return;
+            if (!state.cart[cartKey] && change < 0) return;
 
             // If item is not in cart, and we're trying to increment, add it
-            if (!state.cart[itemCode] && change > 0) {
-                const item = state.items.find(i => i.item_code === itemCode);
+            if (!state.cart[cartKey] && change > 0) {
+                const item = state.items.find(i => String(i.item_code) === String(itemCode));
                 if (item) {
-                    state.cart[itemCode] = { qty: 0, item: item };
+                    const price = portion
+                        ? ((item.portion_prices || {})[portion] ?? item.price)
+                        : item.price;
+                    state.cart[cartKey] = { qty: 0, item, portion, price };
                 } else {
                     console.warn(`Item with code ${itemCode} not found.`);
                     return;
                 }
             }
 
-            state.cart[itemCode].qty += change;
+            state.cart[cartKey].qty += change;
 
-            if (state.cart[itemCode].qty <= 0) {
-                delete state.cart[itemCode];
+            if (state.cart[cartKey].qty <= 0) {
+                delete state.cart[cartKey];
             }
 
             // Mark cart as modified if we're editing a pending request
@@ -1395,10 +1450,10 @@
                     pendingQuantities[i.item_code] = i.quantity || 0;
                 });
             }
-            const cartTotal = items.reduce((sum, { qty, item }) => {
+            const cartTotal = items.reduce((sum, { qty, item, price }) => {
                 const pendingQty = pendingQuantities[item.item_code] || 0;
                 const newQty = Math.max(0, qty - pendingQty);
-                return sum + (item.price * newQty);
+                return sum + ((price ?? item.price) * newQty);
             }, 0);
 
             // Show cart bar if there are items OR if there's an approved order (so user can view/add items)
@@ -1423,7 +1478,7 @@
 
             // Calculate totals
             const totalQty = items.reduce((acc, c) => acc + c.qty, 0);
-            const totalPrice = items.reduce((acc, c) => acc + (c.item.price * c.qty), 0);
+            const totalPrice = items.reduce((acc, c) => acc + ((c.price ?? c.item.price) * c.qty), 0);
 
             const cartLabel = bar.querySelector('.cart-label');
             const cartAction = bar.querySelector('.cart-action-text');
@@ -1458,7 +1513,7 @@
             const movEl = document.getElementById('cart-bar-mov');
             if (movEl) {
                 if (state.minOrderValue !== null && hasItems) {
-                    const barCartTotal = items.reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+                    const barCartTotal = items.reduce((sum, { qty, item, price }) => sum + ((price ?? item.price) * qty), 0);
                     const barApprovedTotal = (state.existingOrder && state.existingOrder.items)
                         ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
                         : 0;
@@ -1488,8 +1543,8 @@
             const items = Object.values(state.cart);
 
             // Calculate full cart total (all items currently in cart)
-            const totalPrice = items.reduce((acc, { qty, item }) => {
-                return acc + (item.price * qty);
+            const totalPrice = items.reduce((acc, { qty, item, price }) => {
+                return acc + ((price ?? item.price) * qty);
             }, 0);
 
             if (items.length === 0) {
@@ -1510,19 +1565,24 @@
             const visibleItems = items.slice(0, maxVisible);
             const remainingCount = items.length - maxVisible;
 
-            itemsContainer.innerHTML = visibleItems.map(({ qty, item }) => `
+            itemsContainer.innerHTML = visibleItems.map(({ qty, item, portion, price }) => {
+                const displayName = portion ? `${item.name} (${portion})` : item.name;
+                const entryPrice = price ?? item.price;
+                const cartKey = portion ? `${item.item_code}::${portion}` : String(item.item_code);
+                const escapedKey = cartKey.replace(/'/g, "\\'");
+                return `
                 <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-gray-900 text-sm truncate">${item.name}</div>
-                        <div class="text-orange-600 font-bold text-xs">₹${item.price * qty}</div>
+                        <div class="font-semibold text-gray-900 text-sm truncate">${displayName}</div>
+                        <div class="text-orange-600 font-bold text-xs">₹${entryPrice * qty}</div>
                     </div>
                     <div class="flex items-center bg-gray-100 rounded-lg h-7 ml-3">
-                        <button onclick="updateCart('${item.item_code}', -1, true)" class="w-7 h-full flex items-center justify-center font-bold text-gray-600 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">-</button>
+                        <button onclick="updateCart('${escapedKey}', -1, true)" class="w-7 h-full flex items-center justify-center font-bold text-gray-600 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">-</button>
                         <span class="w-5 text-center font-bold text-xs text-gray-900">${qty}</span>
-                        <button onclick="updateCart('${item.item_code}', 1, true)" class="w-7 h-full flex items-center justify-center font-bold text-gray-900 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">+</button>
+                        <button onclick="updateCart('${escapedKey}', 1, true)" class="w-7 h-full flex items-center justify-center font-bold text-gray-900 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">+</button>
                     </div>
                 </div>
-            `).join('') + (remainingCount > 0 ? `
+            `;}).join('') + (remainingCount > 0 ? `
                 <div class="text-center py-2 text-sm text-gray-500 font-medium">
                     and ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
                 </div>
@@ -1614,7 +1674,7 @@
             const movModalText = document.getElementById('cart-modal-mov-text');
             if (!movModal || !movModalText) return;
             if (!state.minOrderValue || state.minOrderValue <= 0 || isNaN(state.minOrderValue)) { movModal.classList.add('hidden'); return; }
-            const cartTotal = Object.values(state.cart).reduce((sum, { qty, item }) => sum + (item.price * qty), 0);
+            const cartTotal = Object.values(state.cart).reduce((sum, { qty, item, price }) => sum + ((price ?? item.price) * qty), 0);
             const approvedTotal = (state.existingOrder && state.existingOrder.items)
                 ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
                 : 0;
@@ -1640,7 +1700,7 @@
             // MOV check (applies to all modes)
             if (state.minOrderValue !== null) {
                 const cartTotal = Object.values(state.cart)
-                    .reduce((s, { qty, item }) => s + (item.price * qty), 0);
+                    .reduce((s, { qty, item, price }) => s + ((price ?? item.price) * qty), 0);
                 const approvedTotal = (state.existingOrder && state.existingOrder.items)
                     ? state.existingOrder.items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0)
                     : 0;
@@ -1758,12 +1818,13 @@
             if (state.pendingRequest && state.pendingRequest.items) {
                 state.pendingRequest.items.forEach(pi => {
                     const originalItem = state.itemsMap[pi.item_code] || pi;
+                    const cartKey = pi.portion ? `${pi.item_code}::${pi.portion}` : String(pi.item_code);
                     // Only add if not already in cart (preserve any user modifications)
-                    if (!state.cart[pi.item_code]) {
-                        state.cart[pi.item_code] = {
-                            qty: pi.quantity,
-                            item: originalItem
-                        };
+                    if (!state.cart[cartKey]) {
+                        const price = pi.portion
+                            ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
+                            : (pi.price ?? originalItem.price);
+                        state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
                     }
                 });
             }
@@ -1773,10 +1834,11 @@
 
             // Calculate totals
             // Cart total: count only the difference in quantities (increases) as new items
-            const cartTotal = allEntries.reduce((sum, [code, { qty, item }]) => {
-                const pendingQty = pendingQuantities[code] || 0;
+            const cartTotal = allEntries.reduce((sum, [cartKey, { qty, item, price }]) => {
+                const itemCode = String(cartKey).split('::')[0];
+                const pendingQty = pendingQuantities[itemCode] || 0;
                 const newQty = Math.max(0, qty - pendingQty); // Only count the increase
-                return sum + (item.price * newQty);
+                return sum + ((price ?? item.price) * newQty);
             }, 0);
 
             // Pending total: original pending quantities
@@ -1834,16 +1896,20 @@
                     container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">No items in cart</div>';
                 }
             } else {
-                container.innerHTML = allEntries.map(([code, { qty, item }]) => {
-                    const pendingQty = pendingQuantities[code] || 0;
+                container.innerHTML = allEntries.map(([cartKey, { qty, item, portion, price }]) => {
+                    const itemCode = String(cartKey).split('::')[0];
+                    const pendingQty = pendingQuantities[itemCode] || 0;
                     const isPendingItem = pendingQty > 0;
                     const newQty = Math.max(0, qty - pendingQty);
+                    const entryPrice = price ?? item.price;
+                    const displayName = portion ? `${item.name} (${portion})` : item.name;
+                    const escapedKey = cartKey.replace(/'/g, "\\'");
 
                     return `
                     <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 ${isPendingItem ? 'bg-orange-50/30' : ''}">
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
-                                <div class="font-bold text-gray-900 text-[15px]">${item.name}</div>
+                                <div class="font-bold text-gray-900 text-[15px]">${displayName}</div>
                                 ${isPendingItem ? `
                                 <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">Pending</span>
                                 ` : ''}
@@ -1851,13 +1917,13 @@
                             ${isPendingItem && newQty > 0 ? `
                             <div class="text-xs text-gray-500 mb-1">+${newQty} more added</div>
                             ` : ''}
-                            <div class="text-orange-600 font-bold text-xs">₹${item.price * qty}</div>
+                            <div class="text-orange-600 font-bold text-xs">₹${entryPrice * qty}</div>
                         </div>
                         ${canEdit ? `
                         <div class="flex items-center bg-gray-100 rounded-lg h-8">
-                            <button onclick="updateCart('${code}', -1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-600">-</button>
+                            <button onclick="updateCart('${escapedKey}', -1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-600">-</button>
                             <span class="w-6 text-center font-bold text-sm text-gray-900">${qty}</span>
-                            <button onclick="updateCart('${code}', 1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-900">+</button>
+                            <button onclick="updateCart('${escapedKey}', 1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-900">+</button>
                         </div>
                         ` : `
                         <div class="flex items-center bg-gray-200 rounded-lg h-8 px-3">
@@ -2071,7 +2137,11 @@
             state.existingOrder.items.forEach(pi => {
                 const code = pi.item_code || pi.code;
                 const originalItem = state.itemsMap[code] || pi;
-                state.cart[code] = { qty: pi.quantity || 0, item: originalItem };
+                const cartKey = pi.portion ? `${code}::${pi.portion}` : String(code);
+                const price = pi.portion
+                    ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
+                    : (pi.price ?? originalItem.price);
+                state.cart[cartKey] = { qty: pi.quantity || 0, item: originalItem, portion: pi.portion || null, price };
             });
             if (!document.getElementById('cart-modal').classList.contains('hidden')) renderCartModalItems();
             updateCartBarUI();
@@ -2089,13 +2159,14 @@
             const itemsPayload = Object.values(state.cart).map(c => ({
                 item_code: c.item.item_code || c.item.code,
                 name: c.item.name,
-                price: c.item.price,
+                price: c.price ?? c.item.price,
                 quantity: c.qty,
                 category: c.item.category,
                 is_cgst_applicable: c.item.is_cgst_applicable,
                 is_sgst_applicable: c.item.is_sgst_applicable,
                 group_id: c.item.group_id,
-                group: c.item.group
+                group: c.item.group,
+                ...(c.portion ? { portion: c.portion } : {}),
             }));
             if (itemsPayload.length === 0) return alert('Order must have at least one item.');
             const btn = document.getElementById('place-order-btn');
@@ -2280,13 +2351,14 @@
             const baseItems = Object.values(state.cart).map(c => ({
                 item_code: c.item.item_code,
                 name: c.item.name,
-                price: c.item.price,
+                price: c.price ?? c.item.price,
                 quantity: c.qty,
                 category: c.item.category,
                 is_cgst_applicable: c.item.is_cgst_applicable,
                 is_sgst_applicable: c.item.is_sgst_applicable,
                 group_id: c.item.group_id,
-                group: c.item.group
+                group: c.item.group,
+                ...(c.portion ? { portion: c.portion } : {}),
             }));
 
             // Pickup with existing approved order: if user is editing the full approved order, send only delta (additions)
@@ -2418,10 +2490,10 @@
                 });
             }
             const items = Object.values(state.cart);
-            const cartTotal = items.reduce((sum, { qty, item }) => {
+            const cartTotal = items.reduce((sum, { qty, item, price }) => {
                 const pendingQty = pendingQuantities[item.item_code] || 0;
                 const newQty = Math.max(0, qty - pendingQty);
-                return sum + (item.price * newQty);
+                return sum + ((price ?? item.price) * newQty);
             }, 0);
 
             // Only show if there are new items and 1 minute has passed
