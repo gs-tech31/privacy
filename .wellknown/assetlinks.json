@@ -1,0 +1,22 @@
+[
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.wtn",
+        "sha256_cert_fingerprints": [
+          "01:34:A0:B4:59:4E:28:DC:54:CE:FD:BC:98:C7:BE:E3:B7:69:78:3C:CF:A3:B2:40:15:60:73:E3:13:65:B6:82"
+        ]
+      }
+    },
+    {
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+          "namespace": "android_app",
+          "package_name": "com.prasad777.BhagavadGitaApp",
+          "sha256_cert_fingerprints": [
+            "77:CF:A8:47:E1:D9:26:6A:85:DC:AD:84:3B:51:03:1C:F5:FB:0E:FF:D7:DB:1E:21:3E:9F:54:34:C8:65:4A:FF"
+          ]
+        }
+      }
+  ]
