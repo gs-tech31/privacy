@@ -348,7 +348,8 @@
 
                     <!-- Custom Note -->
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">📝 Add your instructions</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">📝 Add your
+                            instructions</label>
                         <textarea id="item-custom-note" rows="3" placeholder="E.g. No onions, serve hot..."
                             class="w-full px-4 py-3 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-500 text-sm placeholder-gray-400 font-medium resize-none"></textarea>
                     </div>
@@ -776,7 +777,13 @@
                                     const price = pi.portion
                                         ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
                                         : (pi.price ?? originalItem.price);
-                                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
+                                    state.cart[cartKey] = { 
+                                        qty: pi.quantity, 
+                                        item: originalItem, 
+                                        portion: pi.portion || null, 
+                                        price,
+                                        customNote: (pi.notes && pi.notes.length > 0) ? pi.notes[0] : ''
+                                    };
                                 });
 
                                 // Reset modification flag when we sync from server
@@ -1019,7 +1026,13 @@
                                     const price = pi.portion
                                         ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
                                         : (pi.price ?? originalItem.price);
-                                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
+                                    state.cart[cartKey] = { 
+                                        qty: pi.quantity, 
+                                        item: originalItem, 
+                                        portion: pi.portion || null, 
+                                        price,
+                                        customNote: (pi.notes && pi.notes.length > 0) ? pi.notes[0] : ''
+                                    };
                                 });
 
                                 state.cartModifiedFromPending = false;
@@ -1130,7 +1143,13 @@
                     const price = pi.portion
                         ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
                         : (pi.price ?? originalItem.price);
-                    state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
+                    state.cart[cartKey] = { 
+                        qty: pi.quantity, 
+                        item: originalItem, 
+                        portion: pi.portion || null, 
+                        price,
+                        customNote: (pi.notes && pi.notes.length > 0) ? pi.notes[0] : ''
+                    };
                 }
             });
 
@@ -1488,6 +1507,11 @@
         window.openItemNotes = (cartKey) => {
             const entry = state.cart[cartKey];
             if (!entry) return;
+
+            // Guard: Cannot edit notes for items that are already part of a pending request
+            const itemCode = String(cartKey).split('::')[0];
+            const pendingQty = (state.pendingRequest?.items || []).find(i => String(i.item_code) === itemCode)?.quantity || 0;
+            if (pendingQty > 0) return;
 
             state.editingItemKey = cartKey;
             document.getElementById('notes-item-name').textContent = entry.item.name + (entry.portion ? ` (${entry.portion})` : '');
@@ -1927,7 +1951,13 @@
                         const price = pi.portion
                             ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
                             : (pi.price ?? originalItem.price);
-                        state.cart[cartKey] = { qty: pi.quantity, item: originalItem, portion: pi.portion || null, price };
+                        state.cart[cartKey] = { 
+                            qty: pi.quantity, 
+                            item: originalItem, 
+                            portion: pi.portion || null, 
+                            price,
+                            customNote: (pi.notes && pi.notes.length > 0) ? pi.notes[0] : ''
+                        };
                     }
                 });
             }
@@ -2043,12 +2073,20 @@
                         
                         <!-- Note Summary -->
                         <div class="mt-2 flex items-center justify-between">
+                            ${!isPendingItem ? `
                             <button onclick="openItemNotes('${escapedKey}')" class="flex items-center gap-1.5 py-1 px-3 rounded-full bg-orange-50/50 hover:bg-orange-100 transition-colors text-left group overflow-hidden max-w-full">
                                 <svg class="w-3.5 h-3.5 text-orange-400 group-hover:text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 <span class="text-[11px] font-semibold truncate ${noteText ? 'text-gray-900' : 'text-gray-400'}">
                                     ${noteText || 'Add special instructions...'}
                                 </span>
                             </button>
+                            ` : `
+                            <div class="flex items-center gap-1.5 py-1 px-3 rounded-full bg-gray-50 text-left overflow-hidden max-w-full">
+                                <span class="text-[11px] font-semibold truncate ${noteText ? 'text-gray-900' : 'text-gray-400'}">
+                                    ${noteText || 'No special instructions'}
+                                </span>
+                            </div>
+                            `}
                         </div>
                     </div>
                     `;
@@ -2261,7 +2299,13 @@
                 const price = pi.portion
                     ? ((originalItem.portion_prices || {})[pi.portion] ?? pi.price ?? originalItem.price)
                     : (pi.price ?? originalItem.price);
-                state.cart[cartKey] = { qty: pi.quantity || 0, item: originalItem, portion: pi.portion || null, price };
+                state.cart[cartKey] = { 
+                    qty: pi.quantity || 0, 
+                    item: originalItem, 
+                    portion: pi.portion || null, 
+                    price,
+                    customNote: (pi.notes && pi.notes.length > 0) ? pi.notes[0] : ''
+                };
             });
             if (!document.getElementById('cart-modal').classList.contains('hidden')) renderCartModalItems();
             updateCartBarUI();
