@@ -259,7 +259,8 @@
             <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
 
                 <!-- ETA countdown pill -->
-                <div id="eta-countdown" class="hidden mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-center">
+                <div id="eta-countdown"
+                    class="hidden mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-center">
                     <span id="eta-text" class="text-green-700 font-semibold text-sm"></span>
                 </div>
 
@@ -319,6 +320,46 @@
                             d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                     </svg>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Notes Bottom Sheet -->
+    <div id="item-notes-sheet" class="fixed inset-0 z-[100] hidden flex flex-col justify-end pointer-events-none">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity duration-300"
+            onclick="closeItemNotes()"></div>
+        <div
+            class="relative w-full md:max-w-md md:mx-auto bg-white rounded-t-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] transition-transform duration-300 translate-y-full overflow-hidden pointer-events-auto">
+            <div class="h-1.5 w-12 bg-gray-300 rounded-full mx-auto mt-3 mb-1"></div>
+
+            <div class="p-6 pt-2">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 id="notes-item-name" class="text-xl font-bold text-gray-900 font-display truncate pr-4">Item
+                        Name</h2>
+                    <button onclick="closeItemNotes()" class="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6 overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar">
+
+                    <!-- Custom Note -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">📝 Add your instructions</label>
+                        <textarea id="item-custom-note" rows="3" placeholder="E.g. No onions, serve hot..."
+                            class="w-full px-4 py-3 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-500 text-sm placeholder-gray-400 font-medium resize-none"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button onclick="saveItemNotes()"
+                        class="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg shadow-xl shadow-gray-900/10 active:scale-[0.98] transition-all">
+                        Save Instructions
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -436,6 +477,7 @@
             etaTimestamp: null,
             denialReason: null,
             countdownIntervalId: null,
+            editingItemKey: null, // Track which cart item is being edited for notes
         };
 
         // Initialize pickup flags from URL (separate QR for pickup)
@@ -456,7 +498,7 @@
                     name: state.guestName || '',
                     phone: state.guestPhone || '',
                 }));
-            } catch (_) {}
+            } catch (_) { }
         }
 
         function loadGuestIdentity() {
@@ -468,7 +510,7 @@
                 if (name) state.guestName = name;
                 if (phone) state.guestPhone = phone;
                 console.log('[PREFILL] loadGuestIdentity: loaded name=' + state.guestName + ' phone=' + state.guestPhone);
-            } catch (_) {}
+            } catch (_) { }
         }
 
         // Restore on load
@@ -947,7 +989,7 @@
                     console.log('[PICKUP_STATUS] ▶ raw response', {
                         has_pending: !!pending,
                         pending_id: pending?.request_id,
-                        pending_items: pending?.items?.map(i => `${i.name||i.item_code}×${i.quantity}`) ?? [],
+                        pending_items: pending?.items?.map(i => `${i.name || i.item_code}×${i.quantity}`) ?? [],
                         has_active_order: !!active,
                         active_order_id: active?.order_id,
                         active_order_items: active?.items?.map(i => `${i.name}×${i.quantity}`) ?? [],
@@ -1369,8 +1411,10 @@
 
         // --- Interaction ---
 
-        window.updateCart = (cartKey, change, allowFromTopView = false) => {
+        window.updateCart = (cartKey, change, renderMenuAfter = false, renderCartAfter = false) => {
+            if (change === 0) return;
             markUserActive();
+
             // If pending request exists and not in edit mode, enable edit mode automatically
             if (state.pendingRequest && !state.isEditingPendingRequest) {
                 state.isEditingPendingRequest = true;
@@ -1391,7 +1435,7 @@
                     const price = portion
                         ? ((item.portion_prices || {})[portion] ?? item.price)
                         : item.price;
-                    state.cart[cartKey] = { qty: 0, item, portion, price };
+                    state.cart[cartKey] = { qty: 0, item, portion, price, selectedNotes: {}, customNote: '' };
                 } else {
                     console.warn(`Item with code ${itemCode} not found.`);
                     return;
@@ -1437,6 +1481,63 @@
             if (!document.getElementById('cart-modal').classList.contains('hidden')) {
                 renderCartModalItems();
             }
+        };
+
+        // --- Item Notes Logic ---
+
+        window.openItemNotes = (cartKey) => {
+            const entry = state.cart[cartKey];
+            if (!entry) return;
+
+            state.editingItemKey = cartKey;
+            document.getElementById('notes-item-name').textContent = entry.item.name + (entry.portion ? ` (${entry.portion})` : '');
+
+            // Populate current values
+            document.getElementById('item-custom-note').value = entry.customNote || '';
+
+            document.getElementById('item-notes-sheet').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Trigger animation after showing
+            setTimeout(() => {
+                const sheetContent = document.querySelector('#item-notes-sheet > div:last-child');
+                if (sheetContent) {
+                    sheetContent.classList.remove('translate-y-full');
+                    sheetContent.classList.add('translate-y-0');
+                }
+            }, 10);
+        };
+
+        window.closeItemNotes = () => {
+            const sheetContent = document.querySelector('#item-notes-sheet > div:last-child');
+            if (sheetContent) {
+                sheetContent.classList.remove('translate-y-0');
+                sheetContent.classList.add('translate-y-full');
+            }
+
+            setTimeout(() => {
+                document.getElementById('item-notes-sheet').classList.add('hidden');
+                if (!document.getElementById('cart-modal').classList.contains('hidden')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = 'auto';
+                }
+                state.editingItemKey = null;
+            }, 300);
+        };
+
+        // selectQuickNote is no longer needed
+
+        window.saveItemNotes = () => {
+            const key = state.editingItemKey;
+            if (!key || !state.cart[key]) return;
+
+            state.cart[key].selectedNotes = {};
+            state.cart[key].customNote = document.getElementById('item-custom-note').value.trim();
+
+            closeItemNotes();
+            renderCartModalItems();
+            updateCartSummaryTop();
         };
 
         window.updateCartBarUI = () => {
@@ -1565,11 +1666,12 @@
             const visibleItems = items.slice(0, maxVisible);
             const remainingCount = items.length - maxVisible;
 
-            itemsContainer.innerHTML = visibleItems.map(({ qty, item, portion, price }) => {
+            itemsContainer.innerHTML = visibleItems.map(({ qty, item, portion, price, selectedNotes, customNote }) => {
                 const displayName = portion ? `${item.name} (${portion})` : item.name;
                 const entryPrice = price ?? item.price;
                 const cartKey = portion ? `${item.item_code}::${portion}` : String(item.item_code);
                 const escapedKey = cartKey.replace(/'/g, "\\'");
+                const hasNotes = Boolean(customNote);
                 return `
                 <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div class="flex-1 min-w-0">
@@ -1582,7 +1684,8 @@
                         <button onclick="updateCart('${escapedKey}', 1, true)" class="w-7 h-full flex items-center justify-center font-bold text-gray-900 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">+</button>
                     </div>
                 </div>
-            `;}).join('') + (remainingCount > 0 ? `
+            `;
+            }).join('') + (remainingCount > 0 ? `
                 <div class="text-center py-2 text-sm text-gray-500 font-medium">
                     and ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
                 </div>
@@ -1896,7 +1999,7 @@
                     container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">No items in cart</div>';
                 }
             } else {
-                container.innerHTML = allEntries.map(([cartKey, { qty, item, portion, price }]) => {
+                container.innerHTML = allEntries.map(([cartKey, { qty, item, portion, price, selectedNotes, customNote }]) => {
                     const itemCode = String(cartKey).split('::')[0];
                     const pendingQty = pendingQuantities[itemCode] || 0;
                     const isPendingItem = pendingQty > 0;
@@ -1905,31 +2008,48 @@
                     const displayName = portion ? `${item.name} (${portion})` : item.name;
                     const escapedKey = cartKey.replace(/'/g, "\\'");
 
+                    const noteSummary = [];
+                    if (customNote) noteSummary.push(customNote);
+                    const noteText = noteSummary.join(' • ');
+
                     return `
-                    <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 ${isPendingItem ? 'bg-orange-50/30' : ''}">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <div class="font-bold text-gray-900 text-[15px]">${displayName}</div>
-                                ${isPendingItem ? `
-                                <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">Pending</span>
+                    <div class="flex flex-col py-3 border-b border-gray-50 last:border-0 ${isPendingItem ? 'bg-orange-50/30' : ''}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0" onclick="openItemNotes('${escapedKey}')">
+                                <div class="flex items-center gap-2">
+                                    <div class="font-bold text-gray-900 text-[15px] truncate hover:text-orange-600 transition-colors cursor-pointer">${displayName}</div>
+                                    ${isPendingItem ? `
+                                    <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">Pending</span>
+                                    ` : ''}
+                                </div>
+                                ${isPendingItem && newQty > 0 ? `
+                                <div class="text-xs text-gray-500 mt-0.5">+${newQty} more added</div>
                                 ` : ''}
+                                <div class="text-orange-600 font-bold text-xs mt-0.5">₹${entryPrice * qty}</div>
                             </div>
-                            ${isPendingItem && newQty > 0 ? `
-                            <div class="text-xs text-gray-500 mb-1">+${newQty} more added</div>
-                            ` : ''}
-                            <div class="text-orange-600 font-bold text-xs">₹${entryPrice * qty}</div>
+                            
+                            ${canEdit ? `
+                            <div class="flex items-center bg-gray-100 rounded-lg h-8 ml-3 flex-shrink-0">
+                                <button onclick="updateCart('${escapedKey}', -1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-600">-</button>
+                                <span class="w-6 text-center font-bold text-sm text-gray-900">${qty}</span>
+                                <button onclick="updateCart('${escapedKey}', 1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-900">+</button>
+                            </div>
+                            ` : `
+                            <div class="flex items-center bg-gray-200 rounded-lg h-8 px-3 ml-3 flex-shrink-0">
+                                <span class="text-center font-bold text-sm text-gray-600">${qty}</span>
+                            </div>
+                            `}
                         </div>
-                        ${canEdit ? `
-                        <div class="flex items-center bg-gray-100 rounded-lg h-8">
-                            <button onclick="updateCart('${escapedKey}', -1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-600">-</button>
-                            <span class="w-6 text-center font-bold text-sm text-gray-900">${qty}</span>
-                            <button onclick="updateCart('${escapedKey}', 1, true)" class="w-8 h-full flex items-center justify-center font-bold text-gray-900">+</button>
+                        
+                        <!-- Note Summary -->
+                        <div class="mt-2 flex items-center justify-between">
+                            <button onclick="openItemNotes('${escapedKey}')" class="flex items-center gap-1.5 py-1 px-3 rounded-full bg-orange-50/50 hover:bg-orange-100 transition-colors text-left group overflow-hidden max-w-full">
+                                <svg class="w-3.5 h-3.5 text-orange-400 group-hover:text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span class="text-[11px] font-semibold truncate ${noteText ? 'text-gray-900' : 'text-gray-400'}">
+                                    ${noteText || 'Add special instructions...'}
+                                </span>
+                            </button>
                         </div>
-                        ` : `
-                        <div class="flex items-center bg-gray-200 rounded-lg h-8 px-3">
-                            <span class="text-center font-bold text-sm text-gray-600">${qty}</span>
-                        </div>
-                        `}
                     </div>
                     `;
                 }).join('');
@@ -2359,6 +2479,7 @@
                 group_id: c.item.group_id,
                 group: c.item.group,
                 ...(c.portion ? { portion: c.portion } : {}),
+                notes: c.customNote ? [c.customNote] : []
             }));
 
             // Pickup with existing approved order: if user is editing the full approved order, send only delta (additions)
