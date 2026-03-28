@@ -235,7 +235,7 @@
         encodeURIComponent(msg);
       var subject = encodeURIComponent('Project inquiry from ' + n);
       window.location.href =
-        'mailto:gstech.info.24@gmail.com?subject=' + subject + '&body=' + body;
+        'mailto:info@gstechs.in?subject=' + subject + '&body=' + body;
 
       formStatus.textContent = 'Opening your email app…';
       formStatus.className = 'form-status';

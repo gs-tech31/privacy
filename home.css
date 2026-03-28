@@ -933,6 +933,35 @@ img {
   margin-top: 0.35rem;
 }
 
+.footer__address {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: normal;
+  max-width: 320px;
+  margin-top: 1rem;
+  line-height: 1.5;
+}
+
+.footer__meta {
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.footer__meta a {
+  color: var(--text-muted);
+  transition: color 0.25s;
+}
+
+.footer__meta a:hover {
+  color: var(--accent);
+}
+
+.footer__meta-sep {
+  margin: 0 0.4rem;
+  opacity: 0.6;
+}
+
 .footer .nav__logo-text {
   font-size: 1rem;
 }
