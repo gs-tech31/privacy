@@ -765,6 +765,23 @@ img {
   flex-shrink: 0;
 }
 
+.contact-channel__icon--brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contact-channel__logo {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.contact-channel__logo--whatsapp {
+  color: #25d366;
+}
+
 .contact-channel__body {
   display: flex;
   flex-direction: column;
