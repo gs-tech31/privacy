@@ -295,6 +295,13 @@
                     <input type="tel" id="guest-phone" placeholder="Phone Number"
                         oninput="state.guestPhone = this.value; saveGuestIdentity(); renderCartModalItems();"
                         class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
+                    <!-- Delivery address (only shown in delivery mode) -->
+                    <div id="cart-delivery-address-section" class="hidden">
+                        <textarea id="cart-delivery-address" rows="3"
+                            oninput="state.deliveryAddress = this.value; renderCartModalItems();"
+                            placeholder="Delivery address: House no., street, area, city"
+                            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-green-300 text-gray-900 placeholder-gray-400 font-medium text-sm resize-none"></textarea>
+                    </div>
                 </div>
             </div>
 
@@ -405,6 +412,82 @@
         </div>
     </div>
 
+    <!-- Delivery Identity Gate (Full-page overlay for delivery QR) -->
+    <div id="delivery-gate-overlay"
+        class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div class="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6">
+            <div class="text-center mb-4">
+                <div
+                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🚚
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-1">Delivery Order</h3>
+                <p class="text-gray-500 text-sm">
+                    Enter your name and phone to view or place delivery orders.
+                </p>
+            </div>
+            <div class="space-y-4 mt-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Name <span class="text-red-500">*</span>
+                    </label>
+                    <input id="delivery-gate-name" type="text"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 placeholder-gray-400 text-sm"
+                        placeholder="Enter your name" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Phone Number <span class="text-red-500">*</span>
+                    </label>
+                    <input id="delivery-gate-phone" type="tel"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 placeholder-gray-400 text-sm"
+                        placeholder="10-digit mobile number" />
+                </div>
+                <p id="delivery-gate-error" class="text-xs text-red-500 min-h-[1.25rem]"></p>
+                <button id="delivery-gate-submit-btn" onclick="handleDeliveryGateSubmit()"
+                    class="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-base shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Delivery Orders Screen (full-page, shown after gate or via status banner) -->
+    <div id="delivery-orders-overlay"
+        class="fixed inset-0 z-[90] hidden flex-col bg-gray-50">
+        <!-- Header -->
+        <div class="bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between shadow-sm">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">My Delivery Orders</h2>
+                <p id="delivery-orders-subtitle" class="text-xs text-gray-400 mt-0.5"></p>
+            </div>
+            <button onclick="closeDeliveryOrdersScreen()"
+                class="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <!-- Orders List -->
+        <div id="delivery-orders-list" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="text-center py-16">
+                <div class="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p class="text-gray-400 mt-3 text-sm">Loading orders...</p>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="bg-white border-t border-gray-100 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+            <button onclick="placeNewDeliveryOrder()"
+                class="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-base shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Place New Order
+            </button>
+        </div>
+    </div>
+
     <!-- Pickup Identity Gate (Full-page overlay for pickup QR) -->
     <div id="pickup-gate-overlay"
         class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -475,6 +558,13 @@
             guestName: "",
             isPickupInitialized: false,
             pickupPollingIntervalId: null, // setInterval for polling status by phone
+            // Delivery specific
+            isDeliveryMode: false,
+            deliveryAddress: "",            // address collected in cart
+            isDeliveryInitialized: false,
+            deliveryOrders: [],             // all active delivery orders for this phone
+            deliveryPollingIntervalId: null,
+            showingDeliveryOrdersScreen: false,
             etaTimestamp: null,
             denialReason: null,
             countdownIntervalId: null,
@@ -486,6 +576,28 @@
             const pickupFlag = urlParams.get('pickup');
             if (pickupFlag && (pickupFlag === 'true' || pickupFlag === '1')) {
                 state.isPickupMode = true;
+            }
+        })();
+
+        // Initialize delivery flags from URL (separate QR for delivery)
+        (function initDeliveryFlags() {
+            const deliveryFlag = urlParams.get('delivery');
+            if (deliveryFlag && (deliveryFlag === 'true' || deliveryFlag === '1')) {
+                state.isDeliveryMode = true;
+                // Restore saved identity (name + phone) from localStorage
+                try {
+                    // Read from new key first, fall back to old key for backward compat
+                    const saved = localStorage.getItem(`dk_delivery_id_${state.tenantId}`)
+                        || localStorage.getItem(`dk_delivery_req_${state.tenantId}`);
+                    if (saved) {
+                        const { name, phone } = JSON.parse(saved);
+                        if (name && !state.guestName) state.guestName = name;
+                        if (phone && !state.guestPhone) {
+                            state.guestPhone = phone;
+                            state.isDeliveryInitialized = true;
+                        }
+                    }
+                } catch (_) {}
             }
         })();
 
@@ -526,6 +638,10 @@
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
+        // Payment API base — points to the Express server (not the Lambda)
+        const PROD_PAYMENT_BASE = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production";
+        const PAYMENT_BASE = IS_LOCAL ? 'http://localhost:3001' : PROD_PAYMENT_BASE;
+
         // ... Initialization ... 
 
         function renderPickupGateIfNeeded() {
@@ -546,6 +662,300 @@
                 overlay.classList.add('hidden');
                 overlay.classList.remove('flex');
             }
+        }
+
+        function renderDeliveryGateIfNeeded() {
+            const overlay = document.getElementById('delivery-gate-overlay');
+            if (!overlay) return;
+
+            if (state.isDeliveryMode && !state.isDeliveryInitialized) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+
+                const phoneInput = document.getElementById('delivery-gate-phone');
+                const nameInput = document.getElementById('delivery-gate-name');
+                if (phoneInput && state.guestPhone) phoneInput.value = state.guestPhone;
+                if (nameInput && state.guestName) nameInput.value = state.guestName;
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        window.handleDeliveryGateSubmit = async () => {
+            const phoneInput = document.getElementById('delivery-gate-phone');
+            const nameInput = document.getElementById('delivery-gate-name');
+            const errorEl = document.getElementById('delivery-gate-error');
+            const submitBtn = document.getElementById('delivery-gate-submit-btn');
+            if (!phoneInput || !nameInput || !errorEl) return;
+
+            const phone = (phoneInput.value || '').trim();
+            const name = (nameInput.value || '').trim();
+
+            if (!phone || !name) {
+                errorEl.textContent = 'Name and phone number are both required.';
+                return;
+            }
+
+            const normalizedPhone = normalizeTenDigitPhone(phone);
+            if (!normalizedPhone) {
+                errorEl.textContent = 'Please enter a valid 10-digit phone number.';
+                return;
+            }
+
+            errorEl.textContent = '';
+            state.guestPhone = normalizedPhone;
+            state.guestName = name;
+            state.isDeliveryInitialized = true;
+
+            // Persist identity for page refreshes
+            try {
+                localStorage.setItem(`dk_delivery_id_${state.tenantId}`, JSON.stringify({
+                    name: state.guestName,
+                    phone: state.guestPhone,
+                }));
+            } catch (_) {}
+
+            // Sync into cart inputs
+            const guestNameInput = document.getElementById('guest-name');
+            const guestPhoneInput = document.getElementById('guest-phone');
+            if (guestNameInput) guestNameInput.value = state.guestName;
+            if (guestPhoneInput) guestPhoneInput.value = state.guestPhone;
+
+            // Show loading state on button
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block"></span>'; }
+
+            // Hide gate
+            renderDeliveryGateIfNeeded();
+
+            // Fetch all active orders and show My Orders screen if any exist
+            await loadDeliveryOrders(true);
+
+            // Start polling
+            if (state.deliveryPollingIntervalId) clearInterval(state.deliveryPollingIntervalId);
+            state.deliveryPollingIntervalId = setInterval(() => loadDeliveryOrders(false), 10000);
+
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Continue'; }
+        };
+
+        // ── Delivery Orders: fetch all active orders for this phone ────────────
+        async function loadDeliveryOrders(showScreenIfOrders = false) {
+            if (!state.tenantId || !state.guestPhone) return;
+            try {
+                const res = await axios.get(`${PAYMENT_BASE}/api/guest/delivery/orders`, {
+                    params: { tenant_id: state.tenantId, guest_phone: state.guestPhone }
+                });
+                if (!res.data.success) return;
+
+                const orders = res.data.orders || [];
+
+                // Detect any refunded orders and show banner (once per order)
+                orders.forEach(order => {
+                    if (order.payment_status === 'refunded') {
+                        showDeliveryRefundBanner(order);
+                    }
+                });
+
+                // Keep only non-refunded orders in state
+                state.deliveryOrders = orders.filter(o => o.payment_status !== 'refunded');
+
+                // Update the status banner
+                renderDeliveryStatusBanner();
+
+                // Re-render My Orders screen if it's open
+                if (state.showingDeliveryOrdersScreen) {
+                    renderDeliveryOrdersList();
+                } else if (showScreenIfOrders && state.deliveryOrders.length > 0) {
+                    openDeliveryOrdersScreen();
+                }
+            } catch (e) {
+                console.warn('[DELIVERY_ORDERS] load error:', e.message);
+            }
+        }
+
+        function openDeliveryOrdersScreen() {
+            state.showingDeliveryOrdersScreen = true;
+            const overlay = document.getElementById('delivery-orders-overlay');
+            if (!overlay) return;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            const subtitle = document.getElementById('delivery-orders-subtitle');
+            if (subtitle) subtitle.textContent = state.guestPhone ? `Phone: ${state.guestPhone}` : '';
+            renderDeliveryOrdersList();
+        }
+
+        window.closeDeliveryOrdersScreen = () => {
+            state.showingDeliveryOrdersScreen = false;
+            const overlay = document.getElementById('delivery-orders-overlay');
+            if (!overlay) return;
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        };
+
+        window.placeNewDeliveryOrder = () => {
+            closeDeliveryOrdersScreen();
+            // User browses menu and opens cart to place new order
+        };
+
+        function formatTimeAgo(ts) {
+            if (!ts) return '';
+            const diff = Date.now() - ts;
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            return `${Math.floor(hrs / 24)}d ago`;
+        }
+
+        function renderDeliveryOrdersList() {
+            const container = document.getElementById('delivery-orders-list');
+            if (!container) return;
+
+            if (state.deliveryOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 px-4">
+                        <div class="text-5xl mb-4">🚚</div>
+                        <p class="text-gray-600 font-semibold">No active delivery orders</p>
+                        <p class="text-gray-400 text-sm mt-1">Browse the menu and place a new order below.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusConfig = {
+                awaiting_payment: { label: 'Awaiting Payment', bg: 'bg-yellow-100', text: 'text-yellow-700', emoji: '⏳' },
+                pending:          { label: 'Awaiting Confirmation', bg: 'bg-orange-100', text: 'text-orange-700', emoji: '🕐' },
+                approved:         { label: 'Confirmed', bg: 'bg-green-100', text: 'text-green-700', emoji: '✅' },
+                in_transit:       { label: 'Out for Delivery', bg: 'bg-blue-100', text: 'text-blue-700', emoji: '🛵' },
+            };
+
+            container.innerHTML = state.deliveryOrders.map(order => {
+                const sc = statusConfig[order.status] || { label: order.status, bg: 'bg-gray-100', text: 'text-gray-700', emoji: '📦' };
+                const items = order.items || [];
+                const itemsText = items.map(i => `${i.name} ×${i.quantity}`).join(', ');
+                const subtotal = items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0);
+                const deliveryCharge = Number(order.delivery_charge) || 0;
+                const total = order.bill_preview?.total || (subtotal + deliveryCharge);
+                const timeAgo = formatTimeAgo(order.requested_at);
+                const canCancel = (order.status === 'pending' || order.status === 'awaiting_payment') && order.payment_status !== 'paid';
+                const addr = order.delivery_address || '';
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-fade-in">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${sc.bg} ${sc.text}">
+                                ${sc.emoji} ${sc.label}
+                            </span>
+                            <span class="text-xs text-gray-400">${timeAgo}</span>
+                        </div>
+                        ${items.length > 0 ? `<p class="text-sm text-gray-800 font-medium mb-1 leading-snug">${itemsText}</p>` : ''}
+                        ${addr ? `<p class="text-xs text-gray-500 mb-2 flex items-start gap-1"><span class="mt-0.5">📍</span><span>${addr}</span></p>` : ''}
+                        ${order.denial_reason ? `<p class="text-xs text-red-500 mb-2 font-medium">Declined: ${order.denial_reason}</p>` : ''}
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                            <div>
+                                <span class="text-sm font-bold text-gray-900">₹${Math.round(total)}</span>
+                                ${deliveryCharge > 0 ? `<span class="text-xs text-gray-400 ml-1">incl. ₹${deliveryCharge} delivery</span>` : ''}
+                                ${order.payment_status === 'paid' ? `<span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">💳 Paid</span>` : ''}
+                            </div>
+                            ${canCancel ? `<button onclick="cancelDeliveryOrder('${order.request_id}')" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 active:scale-95 transition-all">Cancel</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.cancelDeliveryOrder = async (request_id) => {
+            const order = state.deliveryOrders.find(o => o.request_id === request_id);
+            if (!order) return;
+
+            if (!confirm('Cancel this delivery order?')) return;
+
+            try {
+                const res = await axios.delete(`${LAMBDA_URL}/request`, {
+                    data: { tenant_id: state.tenantId, request_id }
+                });
+                if (res.data.success) {
+                    await loadDeliveryOrders(false);
+                } else {
+                    alert('Failed to cancel order');
+                }
+            } catch (e) {
+                console.error('[CANCEL_DELIVERY]', e);
+                alert('Connection error. Please try again.');
+            }
+        };
+
+        // Task 29: Show refund confirmation banner
+        function showDeliveryRefundBanner(request) {
+            const existing = document.getElementById('delivery-refund-banner');
+            if (existing) existing.remove();
+
+            const banner = document.createElement('div');
+            banner.id = 'delivery-refund-banner';
+            banner.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4';
+            banner.innerHTML = `
+                <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">💳</div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Refund Processed</h2>
+                    <p class="text-gray-600 text-sm mb-2">Your delivery order was cancelled and a full refund has been issued.</p>
+                    ${request.razorpay_refund_id ? `<p class="text-xs text-gray-400 mb-1">Refund ID: ${request.razorpay_refund_id}</p>` : ''}
+                    <p class="text-xs text-gray-400 mb-6">Funds will appear in your account within 5–7 working days.</p>
+                    <button onclick="document.getElementById('delivery-refund-banner').remove()" class="w-full py-3 rounded-2xl bg-gray-900 text-white font-bold text-sm">
+                        Done
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+        }
+
+        // Delivery status banner: shows a sticky top banner summarising all active delivery orders
+        function renderDeliveryStatusBanner() {
+            let bar = document.getElementById('delivery-status-bar');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'delivery-status-bar';
+                bar.className = 'hidden fixed top-0 left-0 right-0 z-40 py-2.5 px-4 text-white text-sm font-semibold flex items-center justify-between shadow-md';
+                document.body.appendChild(bar);
+            }
+
+            if (!state.isDeliveryMode || !state.isDeliveryInitialized) { bar.classList.add('hidden'); return; }
+
+            const orders = state.deliveryOrders;
+            if (orders.length === 0) { bar.classList.add('hidden'); return; }
+
+            const awaitingPayment = orders.filter(o => o.status === 'awaiting_payment');
+            bar.classList.remove('hidden');
+
+            if (awaitingPayment.length > 0) {
+                bar.style.background = 'linear-gradient(90deg, #d97706, #b45309)';
+                bar.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <span class="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></span>
+                        ⏳ ${awaitingPayment.length} order${awaitingPayment.length > 1 ? 's' : ''} awaiting payment
+                    </span>
+                    <button onclick="openDeliveryOrdersScreen()" class="text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors flex-shrink-0">View</button>
+                `;
+            } else {
+                const inTransit = orders.filter(o => o.status === 'in_transit');
+                if (inTransit.length > 0) {
+                    bar.style.background = 'linear-gradient(90deg, #2563eb, #1d4ed8)';
+                } else {
+                    bar.style.background = 'linear-gradient(90deg, #16a34a, #15803d)';
+                }
+                bar.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <span class="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></span>
+                        📦 ${orders.length} active delivery order${orders.length > 1 ? 's' : ''}
+                    </span>
+                    <button onclick="openDeliveryOrdersScreen()" class="text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors flex-shrink-0">View</button>
+                `;
+            }
+        }
+
+        // Keep renderStatusBar as a no-op for non-delivery (called in some legacy places)
+        function renderStatusBar() {
+            if (state.isDeliveryMode) renderDeliveryStatusBanner();
         }
 
         function normalizeTenDigitPhone(input) {
@@ -654,7 +1064,17 @@
                 renderMenu();
 
                 // 3. Initial Status Check
-                if (state.isPickupMode) {
+                if (state.isDeliveryMode) {
+                    // Show gate if not yet initialized; otherwise load orders directly
+                    renderDeliveryGateIfNeeded();
+                    if (state.isDeliveryInitialized && state.guestPhone) {
+                        // Fetch all active orders; show My Orders screen if any exist
+                        await loadDeliveryOrders(true);
+                        if (state.deliveryPollingIntervalId) clearInterval(state.deliveryPollingIntervalId);
+                        state.deliveryPollingIntervalId = setInterval(() => loadDeliveryOrders(false), 10000);
+                    }
+                    updateCartSummaryTop();
+                } else if (state.isPickupMode) {
                     // Show full-page gate; status will be fetched after identity is submitted
                     renderPickupGateIfNeeded();
                     updateCartSummaryTop();
@@ -1087,10 +1507,13 @@
         }
 
         window.cancelPendingRequest = async () => {
+            // Delivery cancellations are handled from the My Delivery Orders screen
+            if (state.isDeliveryMode) return;
+
             if (!confirm('Are you sure you want to cancel your request?')) return;
 
             const btn = document.getElementById('cancel-req-btn');
-            if (btn) btn.innerHTML = '...';
+            if (btn) { btn.disabled = true; btn.innerHTML = 'Cancelling...'; }
 
             try {
                 const res = await axios.delete(`${LAMBDA_URL}/request`, {
@@ -1101,28 +1524,26 @@
                 });
 
                 if (res.data.success) {
-                    if (btn) btn.innerHTML = 'Cancel Request';
-                    // Clear pending request and cart immediately
+                    if (btn) { btn.disabled = false; btn.innerHTML = 'Cancel Request'; }
                     state.pendingRequest = null;
                     state.isEditingPendingRequest = false;
                     state.cartModifiedFromPending = false;
-
-                    // Clear cart to remove quantity buttons (revert to "ADD" buttons)
                     state.cart = {};
-                    updateFlowStatus();
+
+                    if (typeof updateFlowStatus === 'function') updateFlowStatus();
                     updateCartBarUI();
                     updateMenuQuantitiesOnly();
 
-                    // Refresh status to sync with backend
                     if (state.isPickupMode) checkPickupStatus(true); else checkTableStatus(true);
+                    closeCart();
                 } else {
-                    if (btn) btn.innerHTML = 'Cancel Request';
+                    if (btn) { btn.disabled = false; btn.innerHTML = 'Cancel Request'; }
                     alert('Failed to cancel request');
                 }
             } catch (e) {
-                if (btn) btn.innerHTML = 'Cancel Request';
+                if (btn) { btn.disabled = false; btn.innerHTML = 'Cancel Request'; }
                 console.error(e);
-                alert('Connection error');
+                alert('Connection error. Please try again.');
             }
         };
 
@@ -1769,13 +2190,24 @@
             if (nameInput) nameInput.placeholder = isRoomOrGuestHouse ? 'Your Name *' : 'Your Name';
             if (phoneInput) phoneInput.placeholder = isRoomOrGuestHouse ? 'Phone Number *' : 'Phone Number';
             document.body.style.overflow = 'hidden';
-            // Pickup: refresh status when opening cart so discount/updates from staff show immediately (like dine-in)
+            // Pickup: refresh status when opening cart
             if (state.isPickupMode && state.guestPhone && typeof checkPickupStatus === 'function') {
                 checkPickupStatus(true).then(() => {
                     renderCartModalItems();
                     updateCartBarUI();
                     updateCartSummaryTop();
                 }).catch(() => { });
+            }
+            // Delivery: show gate if not yet initialized
+            if (state.isDeliveryMode && !state.isDeliveryInitialized) {
+                renderDeliveryGateIfNeeded();
+            }
+            // Delivery: sync address textarea
+            if (state.isDeliveryMode) {
+                const addrSection = document.getElementById('cart-delivery-address-section');
+                if (addrSection) addrSection.classList.remove('hidden');
+                const addrInput = document.getElementById('cart-delivery-address');
+                if (addrInput && state.deliveryAddress && !addrInput.value) addrInput.value = state.deliveryAddress;
             }
         };
 
@@ -1837,6 +2269,19 @@
                     return `Add ₹${remaining} more (min. order ₹${state.minOrderValue})`;
                 }
             }
+            // Name + phone + address required for delivery
+            if (state.isDeliveryMode) {
+                if (!state.guestName || !state.guestName.trim())
+                    return 'Enter your name to continue';
+                const digits = (state.guestPhone || '').replace(/\D/g, '');
+                if (digits.length !== 10)
+                    return 'Enter a valid 10-digit phone number';
+                // Sync address from cart textarea to state
+                const addrInput = document.getElementById('cart-delivery-address');
+                if (addrInput && addrInput.value.trim()) state.deliveryAddress = addrInput.value.trim();
+                if (!state.deliveryAddress || !state.deliveryAddress.trim())
+                    return 'Enter your delivery address';
+            }
             // Name + phone required for rooms and pickup
             const isRoomOrGH = state.hallId === 'ROOM_SERVICE' ||
                 (state.floor != null && String(state.floor).trim() !== '');
@@ -1869,9 +2314,9 @@
             // Update MOV notice in real time
             updateModalMov();
 
-            // Update cancel button visibility
+            // Update cancel button visibility (hidden for delivery — cancel via My Orders screen)
             if (cancelBtn) {
-                if (state.pendingRequest) {
+                if (state.pendingRequest && !state.isDeliveryMode) {
                     cancelBtn.classList.remove('hidden');
                 } else {
                     cancelBtn.classList.add('hidden');
@@ -1901,6 +2346,18 @@
             // Hide pending section - items will be shown in cart with editable quantities
             if (pendingSection) {
                 pendingSection.classList.add('hidden');
+            }
+
+            // Delivery address section in cart (show/hide + pre-fill)
+            const cartDeliveryAddrSection = document.getElementById('cart-delivery-address-section');
+            if (cartDeliveryAddrSection) {
+                if (state.isDeliveryMode) {
+                    cartDeliveryAddrSection.classList.remove('hidden');
+                    const addrInput = document.getElementById('cart-delivery-address');
+                    if (addrInput && state.deliveryAddress && !addrInput.value) addrInput.value = state.deliveryAddress;
+                } else {
+                    cartDeliveryAddrSection.classList.add('hidden');
+                }
             }
 
             // 2. Existing \"On Table\" Items (Approved/Billed Order)
@@ -1981,7 +2438,14 @@
             // Update submit button state based on new items (use cartTotal calculated here)
             const hasNewItems = cartTotal > 0;
             const canEdit = !state.pendingRequest || state.isEditingPendingRequest;
-            if (!hasNewItems) {
+            // Task 30: Block add-items for paid pickup orders
+            const isPickupPaid = state.isPickupMode && state.existingOrder && state.existingOrder.payment_status === "paid";
+            if (isPickupPaid && hasNewItems) {
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                submitBtn.innerHTML = '<span>💳 Order paid online — cannot add items</span>';
+            } else if (!hasNewItems) {
                 // Hide button when no new items
                 submitBtn.style.display = 'none';
             } else if (state.pendingRequest && !state.isEditingPendingRequest) {
@@ -2008,9 +2472,31 @@
                         submitBtn.disabled = false;
                         submitBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'opacity-80');
                         const isEditingApprovedPickup = state.isPickupMode && state.existingOrder && state.existingOrder.order_id;
-                        submitBtn.innerHTML = isEditingApprovedPickup
-                            ? `<span>Send request</span>`
-                            : `<span class="inline-flex items-center justify-center gap-2"><span>Send Request</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+
+                        if (state.isDeliveryMode) {
+                            const deliveryPaymentMode = state.settings.delivery_payment_mode || 'prepaid';
+                            const hasRazorpay = state.settings.razorpay_enabled && state.settings.razorpay_key_id;
+                            const deliveryCartTotal = Object.values(state.cart).reduce((s, c) => s + ((c.price ?? c.item.price) * c.qty), 0);
+                            const deliveryCharge = Number(state.settings.delivery_charge) || 0;
+                            const deliveryGrandTotal = deliveryCartTotal + deliveryCharge;
+
+                            if (deliveryPaymentMode === 'postpaid') {
+                                submitBtn.setAttribute('onclick', 'submitOrder()');
+                                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>🚚 Place Order · Pay on Delivery</span></span>`;
+                            } else if (hasRazorpay) {
+                                submitBtn.setAttribute('onclick', 'initiateDeliveryPayment()');
+                                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span>Pay for Delivery ₹${Math.round(deliveryGrandTotal)}</span></span>`;
+                            } else {
+                                // Prepaid but Razorpay not configured — fallback to direct submit
+                                submitBtn.setAttribute('onclick', 'submitOrder()');
+                                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>🚚 Place Delivery Order</span></span>`;
+                            }
+                        } else {
+                            submitBtn.setAttribute('onclick', 'submitOrder()');
+                            submitBtn.innerHTML = isEditingApprovedPickup
+                                ? `<span>Send request</span>`
+                                : `<span class="inline-flex items-center justify-center gap-2"><span>Send Request</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
+                        }
                     }
                 }
             }
@@ -2286,7 +2772,322 @@
             } else if (upiSection) {
                 upiSection.classList.add('hidden');
             }
+
+            // ── Razorpay "Pay Online" button ────────────────────────────────
+            const hasRazorpay = state.settings.razorpay_enabled && state.settings.razorpay_key_id;
+            const orderAlreadyBilled = state.existingOrder && state.existingOrder.status === 'billed';
+            const showRazorpayButton = hasRazorpay && hasApprovedOrder && !orderAlreadyBilled;
+
+            let rzpSection = document.getElementById('razorpay-pay-section');
+            if (showRazorpayButton) {
+                if (!rzpSection) {
+                    rzpSection = document.createElement('div');
+                    rzpSection.id = 'razorpay-pay-section';
+                    rzpSection.className = 'mt-3';
+                    // Insert just before the UPI section (or where UPI section would be)
+                    const upiEl = document.getElementById('upi-pay-section');
+                    const guestForm = document.querySelector('.pt-6.mt-6.border-t.border-gray-100');
+                    const anchor = upiEl || guestForm;
+                    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(rzpSection, anchor);
+                }
+                const rzpTotal = state.existingOrder.bill_details?.total != null
+                    ? state.existingOrder.bill_details.total
+                    : (state.existingOrder.items || []).reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0);
+                rzpSection.classList.remove('hidden');
+                rzpSection.innerHTML = `
+                    <button
+                        id="rzp-pay-btn"
+                        onclick="initiateRazorpayPayment()"
+                        class="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-base shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        Pay Online &#8377;${Math.round(rzpTotal)}
+                    </button>
+                    <p class="text-center text-xs text-gray-400 mt-1">Secured by Razorpay &bull; Card, UPI, Netbanking</p>
+                `;
+            } else if (rzpSection) {
+                rzpSection.classList.add('hidden');
+            }
         }
+
+        // ── Razorpay checkout functions ─────────────────────────────────────
+
+        // Lazily load Razorpay checkout.js once, when first needed
+        let _rzpScriptLoaded = false;
+        function loadRazorpayScript() {
+            return new Promise((resolve, reject) => {
+                if (_rzpScriptLoaded || window.Razorpay) { _rzpScriptLoaded = true; return resolve(); }
+                const s = document.createElement('script');
+                s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                s.onload = () => { _rzpScriptLoaded = true; resolve(); };
+                s.onerror = () => reject(new Error('Failed to load Razorpay checkout'));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function initiateRazorpayPayment() {
+            const btn = document.getElementById('rzp-pay-btn');
+            if (!btn || btn.disabled) return;
+
+            if (!state.existingOrder || !state.existingOrder.order_id) {
+                alert('No active order found. Please refresh.');
+                return;
+            }
+
+            // Disable button to prevent double clicks
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Opening payment…`;
+
+            try {
+                await loadRazorpayScript();
+
+                // Step 1 — create Razorpay order on our backend
+                const initiateRes = await axios.post(`${PAYMENT_BASE}/api/guest/payment/initiate`, {
+                    tenant_id: state.tenantId,
+                    order_id: state.existingOrder.order_id,
+                });
+                const { razorpay_order_id, amount, key_id } = initiateRes.data;
+
+                // Step 2 — open Razorpay checkout
+                const options = {
+                    key: key_id,
+                    amount,
+                    currency: 'INR',
+                    order_id: razorpay_order_id,
+                    name: state.settings.restaurant_name || 'Restaurant',
+                    description: 'Order Payment',
+                    prefill: {
+                        contact: state.guestPhone || '',
+                        name: state.guestName || '',
+                    },
+                    theme: { color: '#4f46e5' },
+                    handler: async function (response) {
+                        await handleRazorpaySuccess(response, state.existingOrder.order_id);
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            btn.disabled = false;
+                            const rzpTotal = initiateRes.data.bill_preview?.total || (amount / 100);
+                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Pay Online &#8377;${Math.round(rzpTotal)}`;
+                            // Re-render so the button comes back in its normal state
+                        }
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+
+            } catch (err) {
+                console.error('[RZP] initiate error:', err);
+                btn.disabled = false;
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Pay Online`;
+                alert('Could not start payment. Please try again or pay at the counter.');
+            }
+        }
+
+        async function handleRazorpaySuccess(response, order_id) {
+            const btn = document.getElementById('rzp-pay-btn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Confirming payment…'; }
+
+            try {
+                await axios.post(`${PAYMENT_BASE}/api/guest/payment/confirm`, {
+                    tenant_id: state.tenantId,
+                    order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                });
+
+                // Stop polling — order is billed, nothing more to do
+                if (state.pollingIntervalId) { clearInterval(state.pollingIntervalId); state.pollingIntervalId = null; }
+                if (state.pickupPollingIntervalId) { clearInterval(state.pickupPollingIntervalId); state.pickupPollingIntervalId = null; }
+
+                // Mark local state so payment section hides
+                if (state.existingOrder) state.existingOrder.status = 'billed';
+
+                showRazorpaySuccessScreen(order_id);
+            } catch (err) {
+                console.error('[RZP] confirm error:', err);
+                // Payment was captured — even if confirm failed, webhook will bill it.
+                // Show a reassuring message.
+                showRazorpaySuccessScreen(order_id, true);
+            }
+        }
+
+        function showRazorpaySuccessScreen(order_id, webhookFallback = false) {
+            const cartModal = document.getElementById('cart-modal');
+            if (cartModal) cartModal.classList.add('hidden');
+
+            const successBanner = document.createElement('div');
+            successBanner.id = 'rzp-success-banner';
+            successBanner.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4';
+            successBanner.innerHTML = `
+                <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
+                    <p class="text-gray-500 text-sm mb-6">
+                        ${webhookFallback
+                            ? 'Your payment was received. Your bill will be generated shortly.'
+                            : 'Your bill has been generated. Thank you!'}
+                    </p>
+                    <button onclick="document.getElementById('rzp-success-banner').remove()" class="w-full py-3 rounded-2xl bg-indigo-600 text-white font-bold text-sm">
+                        Close
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(successBanner);
+        }
+
+        // Expose for inline onclick
+        window.initiateRazorpayPayment = initiateRazorpayPayment;
+
+        // ── Delivery pre-payment functions ──────────────────────────────────
+
+        async function initiateDeliveryPayment() {
+            const btn = document.getElementById('place-order-btn');
+            if (!btn || btn.disabled) return;
+
+            // Validate
+            if (Object.keys(state.cart).length === 0) { alert('Cart is empty'); return; }
+            if (!state.guestName || !state.guestPhone || !state.deliveryAddress) {
+                renderDeliveryGateIfNeeded();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Opening payment…`;
+
+            const items = Object.values(state.cart).map(c => ({
+                item_code: c.item.item_code,
+                name: c.item.name,
+                price: c.price ?? c.item.price,
+                quantity: c.qty,
+                category: c.item.category,
+                is_cgst_applicable: c.item.is_cgst_applicable,
+                is_sgst_applicable: c.item.is_sgst_applicable,
+                group_id: c.item.group_id,
+                group: c.item.group,
+                ...(c.portion ? { portion: c.portion } : {}),
+            }));
+
+            try {
+                await loadRazorpayScript();
+
+                const initiateRes = await axios.post(`${PAYMENT_BASE}/api/guest/payment/delivery/initiate`, {
+                    tenant_id: state.tenantId,
+                    items,
+                    guest_name: state.guestName,
+                    guest_phone: state.guestPhone,
+                    delivery_address: state.deliveryAddress,
+                });
+
+                const { request_id, razorpay_order_id, amount, key_id, bill_preview } = initiateRes.data;
+
+                const options = {
+                    key: key_id,
+                    amount,
+                    currency: 'INR',
+                    order_id: razorpay_order_id,
+                    name: state.settings.restaurant_name || 'Restaurant',
+                    description: 'Delivery Order Payment',
+                    prefill: { contact: state.guestPhone || '', name: state.guestName || '' },
+                    theme: { color: '#16a34a' },
+                    handler: async function (response) {
+                        await handleDeliveryPaymentSuccess(response, request_id);
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            btn.disabled = false;
+                            const total = bill_preview?.total || (amount / 100);
+                            const deliveryCharge = Number(state.settings.delivery_charge) || 0;
+                            btn.setAttribute('onclick', 'initiateDeliveryPayment()');
+                            btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span>Pay for Delivery ₹${Math.round(total)}</span></span>`;
+                        }
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+
+            } catch (err) {
+                console.error('[DELIVERY_RZP] initiate error:', err);
+                btn.disabled = false;
+                btn.setAttribute('onclick', 'initiateDeliveryPayment()');
+                btn.innerHTML = `<span>Pay for Delivery</span>`;
+                const msg = err?.response?.data?.error || 'Could not start payment. Please try again.';
+                alert(msg);
+            }
+        }
+
+        async function handleDeliveryPaymentSuccess(response, request_id) {
+            const btn = document.getElementById('place-order-btn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Confirming payment…'; }
+
+            try {
+                await axios.post(`${PAYMENT_BASE}/api/guest/payment/delivery/confirm`, {
+                    tenant_id: state.tenantId,
+                    request_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                });
+
+                state.cart = {};
+                state.deliveryAddress = '';
+                updateMenuQuantitiesOnly();
+
+                // Refresh orders list
+                await loadDeliveryOrders(false);
+
+                closeCart();
+                showDeliveryOrderSuccess(false);
+
+            } catch (err) {
+                console.error('[DELIVERY_RZP] confirm error:', err);
+                // Payment captured — webhook will handle it. Show reassurance.
+                state.cart = {};
+                state.deliveryAddress = '';
+                updateMenuQuantitiesOnly();
+                await loadDeliveryOrders(false);
+                closeCart();
+                showDeliveryOrderSuccess(true);
+            }
+        }
+
+        function showDeliveryOrderSuccess(webhookFallback = false) {
+            const existing = document.getElementById('delivery-success-banner');
+            if (existing) existing.remove();
+
+            const banner = document.createElement('div');
+            banner.id = 'delivery-success-banner';
+            banner.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4';
+            banner.innerHTML = `
+                <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🚚</div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Order Placed!</h2>
+                    <p class="text-gray-500 text-sm mb-2">
+                        ${webhookFallback
+                            ? 'Your payment was received. Your order is being confirmed — please wait.'
+                            : 'Your delivery order has been received and is awaiting confirmation.'}
+                    </p>
+                    <p class="text-xs text-gray-400 mb-6">We'll notify you once the restaurant confirms your order.</p>
+                    <button onclick="document.getElementById('delivery-success-banner').remove(); openDeliveryOrdersScreen();" class="w-full py-3 rounded-2xl bg-green-600 text-white font-bold text-sm">
+                        View My Orders
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+        }
+
+        window.initiateDeliveryPayment = initiateDeliveryPayment;
+        window.openDeliveryOrdersScreen = openDeliveryOrdersScreen;
+
+        // (Delivery address edit helpers removed — address editing is not supported for delivery orders.
+        //  Cancellation and viewing are handled via the My Delivery Orders screen.)
 
         window.startEditingApprovedPickupOrder = () => {
             if (!state.existingOrder || !state.existingOrder.items) return;
@@ -2472,6 +3273,32 @@
             if (guestNameInput) state.guestName = guestNameInput;
             if (guestPhoneInput) state.guestPhone = guestPhoneInput;
 
+            // For delivery mode, enforce phone + name + address before submit
+            if (state.isDeliveryMode) {
+                const normalizedPhone = normalizeTenDigitPhone(state.guestPhone);
+                if (!normalizedPhone) {
+                    alert('Please enter a valid 10-digit phone number for delivery orders.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
+                    return;
+                }
+                state.guestPhone = normalizedPhone;
+                if (!state.guestName) {
+                    alert('Name is required for delivery orders.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
+                    return;
+                }
+                if (!state.deliveryAddress || !state.deliveryAddress.trim()) {
+                    alert('Delivery address is required.');
+                    state.isSyncing = false;
+                    updateCartBarUI();
+                    if (btn) { btn.disabled = false; renderCartModalItems(); }
+                    return;
+                }
+            }
             // For pickup mode, enforce phone + name before submit
             if (state.isPickupMode) {
                 const normalizedPhone = normalizeTenDigitPhone(state.guestPhone);
@@ -2553,7 +3380,16 @@
                 pickupItems = deltaItems;
             }
 
-            const payload = state.isPickupMode
+            const payload = state.isDeliveryMode
+                ? {
+                    tenant_id: state.tenantId,
+                    items: baseItems,
+                    guest_name: state.guestName || "Guest",
+                    guest_phone: state.guestPhone,
+                    delivery_address: state.deliveryAddress,
+                    order_type: "delivery",
+                }
+                : state.isPickupMode
                 ? {
                     tenant_id: state.tenantId,
                     items: pickupItems,
@@ -2588,8 +3424,14 @@
                     state.denialReason = null;
                     renderDenialBanner();
 
-                    // Force immediate status check
-                    if (state.isPickupMode) {
+                    // For delivery: refresh orders list and show My Orders screen
+                    if (state.isDeliveryMode) {
+                        state.deliveryAddress = '';
+                        const addrInput = document.getElementById('cart-delivery-address');
+                        if (addrInput) addrInput.value = '';
+                        await loadDeliveryOrders(false);
+                        showDeliveryOrderSuccess(false);
+                    } else if (state.isPickupMode) {
                         checkPickupStatus(true);
                     } else {
                         checkTableStatus(true);
