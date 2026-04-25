@@ -629,6 +629,12 @@
         // Restore on load
         loadGuestIdentity();
 
+        // If delivery mode and phone was restored from any key (delivery-specific or general),
+        // treat the session as initialized so we skip the gate and load orders on first open.
+        if (state.isDeliveryMode && state.guestPhone && !state.isDeliveryInitialized) {
+            state.isDeliveryInitialized = true;
+        }
+
         function markUserActive() {
             state.lastUserAction = Date.now();
         }
@@ -738,29 +744,32 @@
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Continue'; }
         };
 
-        // ── Delivery Orders: fetch all active orders for this phone ────────────
+        // ── My Orders: fetch all orders + requests for this phone ─────────────
         async function loadDeliveryOrders(showScreenIfOrders = false) {
             if (!state.tenantId || !state.guestPhone) return;
             try {
-                const res = await axios.get(`${PAYMENT_BASE}/api/guest/delivery/orders`, {
+                const res = await axios.get(`${PAYMENT_BASE}/api/guest/my-orders`, {
                     params: { tenant_id: state.tenantId, guest_phone: state.guestPhone }
                 });
                 if (!res.data.success) return;
 
                 const orders = res.data.orders || [];
 
-                // Detect any refunded orders and show banner (once per order)
+                // Detect newly refunded orders and show banner (once per order)
+                const prevIds = new Set((state.deliveryOrders || []).map(o => o.request_id));
                 orders.forEach(order => {
-                    if (order.payment_status === 'refunded') {
+                    if (order.payment_status === 'refunded' && !prevIds.has(order.request_id)) {
                         showDeliveryRefundBanner(order);
                     }
                 });
 
-                // Keep only non-refunded orders in state
-                state.deliveryOrders = orders.filter(o => o.payment_status !== 'refunded');
+                // Keep ALL orders in state — history is shown too
+                state.deliveryOrders = orders;
+                console.log('[MY_ORDERS] total:', orders.length, orders);
 
-                // Update the status banner
+                // Update the status banner and persistent My Orders button
                 renderDeliveryStatusBanner();
+                renderMyOrdersBanner();
 
                 // Re-render My Orders screen if it's open
                 if (state.showingDeliveryOrdersScreen) {
@@ -812,77 +821,297 @@
             const container = document.getElementById('delivery-orders-list');
             if (!container) return;
 
-            if (state.deliveryOrders.length === 0) {
+            const all = state.deliveryOrders || [];
+            if (all.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-16 px-4">
                         <div class="text-5xl mb-4">🚚</div>
-                        <p class="text-gray-600 font-semibold">No active delivery orders</p>
-                        <p class="text-gray-400 text-sm mt-1">Browse the menu and place a new order below.</p>
+                        <p class="text-gray-600 font-semibold">No orders yet</p>
+                        <p class="text-gray-400 text-sm mt-1">Browse the menu and place your first order below.</p>
                     </div>
                 `;
                 return;
             }
 
+            const ACTIVE_ORDER_STATUSES = ['awaiting_payment', 'pending', 'approved', 'in_transit'];
+            const active = all.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status));
+            const history = all.filter(o => !ACTIVE_ORDER_STATUSES.includes(o.status));
+
+            // Determine display status
+            function resolveStatus(order) {
+                if (order.type === 'order') {
+                    if (order.status === 'billed') return 'completed';
+                    if (order.status === 'cancelled') return 'order_cancelled';
+                    if (order.status === 'ordered') return 'approved'; // Order exists -> it is confirmed
+                    return order.status;
+                }
+                // request type
+                if (order.status === 'approved' || order.status === 'in_transit') {
+                    const ao = order.active_order;
+                    if (ao?.status === 'billed') return 'completed';
+                    if (ao?.status === 'cancelled') return 'order_cancelled';
+                }
+                return order.status;
+            }
+
             const statusConfig = {
-                awaiting_payment: { label: 'Awaiting Payment', bg: 'bg-yellow-100', text: 'text-yellow-700', emoji: '⏳' },
-                pending:          { label: 'Awaiting Confirmation', bg: 'bg-orange-100', text: 'text-orange-700', emoji: '🕐' },
-                approved:         { label: 'Confirmed', bg: 'bg-green-100', text: 'text-green-700', emoji: '✅' },
-                in_transit:       { label: 'Out for Delivery', bg: 'bg-blue-100', text: 'text-blue-700', emoji: '🛵' },
+                awaiting_payment: { label: 'Awaiting Payment',       bg: 'bg-yellow-100', text: 'text-yellow-800', emoji: '⏳', active: true },
+                pending:          { label: 'Awaiting Confirmation',   bg: 'bg-orange-100', text: 'text-orange-800', emoji: '🕐', active: true },
+                approved:         { label: 'Confirmed',               bg: 'bg-green-100',  text: 'text-green-800',  emoji: '✅', active: true },
+                in_transit:       { label: 'Out for Delivery',        bg: 'bg-blue-100',   text: 'text-blue-800',   emoji: '🛵', active: true },
+                completed:        { label: 'Delivered',               bg: 'bg-gray-100',   text: 'text-gray-600',   emoji: '✓',  active: false },
+                order_cancelled:  { label: 'Cancelled',               bg: 'bg-gray-100',   text: 'text-gray-500',   emoji: '✕',  active: false },
+                denied:           { label: 'Declined',                bg: 'bg-red-50',     text: 'text-red-600',    emoji: '✕',  active: false },
             };
 
-            container.innerHTML = state.deliveryOrders.map(order => {
-                const sc = statusConfig[order.status] || { label: order.status, bg: 'bg-gray-100', text: 'text-gray-700', emoji: '📦' };
+            const paymentBadge = (ps) => {
+                if (!ps || ps === 'pending') return '';
+                const badges = {
+                    authorized:    `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">💳 Paid</span>`,
+                    paid:          `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">💳 Paid</span>`,
+                    voided:        `<span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">↩ Refunded</span>`,
+                    refunded:      `<span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">↩ Refunded</span>`,
+                    refund_failed: `<span class="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">⚠ Refund Failed</span>`,
+                };
+                return badges[ps] || '';
+            };
+
+            const renderCard = (order) => {
+                const resolved = resolveStatus(order);
+                const sc = statusConfig[resolved] || { label: resolved, bg: 'bg-gray-100', text: 'text-gray-600', emoji: '📦' };
                 const items = order.items || [];
                 const itemsText = items.map(i => `${i.name} ×${i.quantity}`).join(', ');
-                const subtotal = items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0);
                 const deliveryCharge = Number(order.delivery_charge) || 0;
-                const total = order.bill_preview?.total || (subtotal + deliveryCharge);
+                const total = order.total || order.bill_preview?.total || order.active_order?.bill_details?.total
+                    || (items.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0) + deliveryCharge);
                 const timeAgo = formatTimeAgo(order.requested_at);
-                const canCancel = (order.status === 'pending' || order.status === 'awaiting_payment') && order.payment_status !== 'paid';
+                
+                // Active = can still be cancelled
+                const ACTIVE_CANCELABLE = ['awaiting_payment', 'pending'];
+                const canCancel = ACTIVE_CANCELABLE.includes(order.status);
+                const needsPayment = order.status === 'awaiting_payment' && order.razorpay_order_id;
+
                 const addr = order.delivery_address || '';
+                const isHistory = !ACTIVE_ORDER_STATUSES.includes(order.status);
+                
+                // Extract Ref ID and Type for debugging
+                const typeLabel = order.type === 'order' ? 'Order' : 'Req';
+                const displayId = String(order.id || "").slice(-5);
+
+                // Resolve bill_no and cancellation_reason from either top-level (raw orders) or active_order (requests)
+                const billNo = order.bill_no || order.active_order?.bill_no || null;
+                const cancellationReason = order.cancellation_reason || order.active_order?.cancellation_reason || null;
+                const sourceLabel = order.source_type === 'pickup' ? '🛍 Pickup' : order.source_type === 'delivery' ? '🚚 Delivery' : null;
+
+                const extraDetail = (() => {
+                    if (order.status === 'denied') {
+                        return order.denial_reason
+                            ? `<p class="text-xs text-red-500 mt-2 font-medium">Reason: ${order.denial_reason}</p>`
+                            : `<p class="text-xs text-red-400 mt-2">Your order was declined by the restaurant.</p>`;
+                    }
+                    if (order.payment_status === 'refunded') {
+                        return `<p class="text-xs text-purple-600 mt-2 font-medium">Refund processed${order.razorpay_refund_id ? ` · ID: ${order.razorpay_refund_id}` : ''}. Funds appear in 5–7 working days.</p>`;
+                    }
+                    if (order.payment_status === 'refund_failed') {
+                        return `
+                            <div class="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                                <p class="text-[11px] text-red-600 font-bold uppercase tracking-tight flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    Automated Refund Failed
+                                </p>
+                                <p class="text-[10px] text-red-500 mt-0.5">${order.refund_failure_reason || "Staff must process manually via Razorpay Dashboard."}</p>
+                            </div>
+                        `;
+                    }
+                    if (resolved === 'completed' && billNo) {
+                        return `<p class="text-xs text-gray-400 mt-2">Bill #${billNo}</p>`;
+                    }
+                    if (resolved === 'order_cancelled' && cancellationReason) {
+                        return `<p class="text-xs text-gray-500 mt-2">Reason: ${cancellationReason}</p>`;
+                    }
+                    return '';
+                })();
 
                 return `
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-fade-in">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${sc.bg} ${sc.text}">
-                                ${sc.emoji} ${sc.label}
-                            </span>
-                            <span class="text-xs text-gray-400">${timeAgo}</span>
-                        </div>
-                        ${items.length > 0 ? `<p class="text-sm text-gray-800 font-medium mb-1 leading-snug">${itemsText}</p>` : ''}
-                        ${addr ? `<p class="text-xs text-gray-500 mb-2 flex items-start gap-1"><span class="mt-0.5">📍</span><span>${addr}</span></p>` : ''}
-                        ${order.denial_reason ? `<p class="text-xs text-red-500 mb-2 font-medium">Declined: ${order.denial_reason}</p>` : ''}
-                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                            <div>
-                                <span class="text-sm font-bold text-gray-900">₹${Math.round(total)}</span>
-                                ${deliveryCharge > 0 ? `<span class="text-xs text-gray-400 ml-1">incl. ₹${deliveryCharge} delivery</span>` : ''}
-                                ${order.payment_status === 'paid' ? `<span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">💳 Paid</span>` : ''}
+                    <div class="bg-white rounded-2xl shadow-sm border ${isHistory ? 'border-gray-100 opacity-80' : 'border-gray-100'} p-4 animate-fade-in">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${sc.bg} ${sc.text}">
+                                    ${sc.emoji} ${sc.label}
+                                </span>
+                                ${sourceLabel ? `<span class="text-xs text-gray-400">${sourceLabel}</span>` : ''}
                             </div>
-                            ${canCancel ? `<button onclick="cancelDeliveryOrder('${order.request_id}')" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 active:scale-95 transition-all">Cancel</button>` : ''}
+                            <div class="text-right">
+                                <p class="text-[9px] text-gray-400 font-mono uppercase">${typeLabel}: ${displayId}</p>
+                                <span class="text-xs text-gray-400">${timeAgo}</span>
+                            </div>
+                        </div>
+                        ${items.length > 0 ? `<p class="text-sm text-gray-800 font-medium mb-1 leading-snug line-clamp-2">${itemsText}</p>` : ''}
+                        ${addr ? `<p class="text-xs text-gray-500 mb-1 flex items-start gap-1"><span class="mt-0.5">📍</span><span>${addr}</span></p>` : ''}
+                        ${extraDetail}
+                        ${(() => {
+                            const b = order.bill_breakdown || {};
+                            const rows = [];
+                            if (b.sub_total != null && b.sub_total > 0) rows.push(`<div class="flex justify-between text-xs text-gray-500"><span>Subtotal</span><span>₹${Math.round(b.sub_total)}</span></div>`);
+                            if (b.cgst != null && b.cgst > 0) rows.push(`<div class="flex justify-between text-xs text-gray-500"><span>CGST</span><span>₹${parseFloat(b.cgst).toFixed(2)}</span></div>`);
+                            if (b.sgst != null && b.sgst > 0) rows.push(`<div class="flex justify-between text-xs text-gray-500"><span>SGST</span><span>₹${parseFloat(b.sgst).toFixed(2)}</span></div>`);
+                            if (b.delivery_charge != null && b.delivery_charge > 0) rows.push(`<div class="flex justify-between text-xs text-gray-500"><span>Delivery charge</span><span>₹${Math.round(b.delivery_charge)}</span></div>`);
+                            return rows.length > 1 ? `<div class="mt-2 space-y-0.5">${rows.join('')}</div>` : '';
+                        })()}
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-bold text-gray-900">₹${Math.round(total)}</span>
+                                ${paymentBadge(order.payment_status)}
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${needsPayment ? `<button onclick="reinitiatePayment('${order.id}')" class="px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 active:scale-95 transition-all shadow-sm shadow-orange-200">Pay Now</button>` : ''}
+                                ${canCancel ? `<button onclick="cancelDeliveryOrder('${order.id}')" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 active:scale-95 transition-all flex-shrink-0">Cancel</button>` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
-            }).join('');
+            };
+
+        window.reinitiatePayment = async (id) => {
+            const order = state.deliveryOrders.find(o => o.id === id);
+            
+            console.log(`[REINITIATE_PAYMENT] Debug:`, {
+                id,
+                razorpay_order_id: order?.razorpay_order_id,
+                razorpay_key_id: order?.razorpay_key_id
+            });
+
+            if (!order || !order.razorpay_order_id || !order.razorpay_key_id || order.razorpay_key_id === "null") {
+                alert('Payment configuration is missing. Please contact support.');
+                return;
+            }
+
+            // Ensure script is loaded
+            try {
+                await loadRazorpayScript();
+            } catch (e) {
+                alert("Failed to load payment gateway. Please check your internet connection.");
+                return;
+            }
+
+            // Autoritative total (matches what was sent during order creation)
+            const rawTotal = order.total || (order.bill_preview && order.bill_preview.total) || 0;
+            const amountPaise = Math.round(Number(rawTotal) * 100);
+
+            if (amountPaise <= 0) {
+                alert('Invalid order amount detected.');
+                return;
+            }
+
+            console.log(`[REINITIATE_PAYMENT] Resuming order ${order.razorpay_order_id} for ₹${rawTotal}`);
+
+            const options = {
+                key: order.razorpay_key_id,
+                amount: amountPaise,
+                currency: "INR",
+                name: state.settings.restaurant_name || "DigiKhana",
+                description: "Complete your order payment",
+                order_id: order.razorpay_order_id,
+                handler: async function (response) {
+                    try {
+                        console.log("[REINITIATE_PAYMENT] Payment successful, syncing with server...");
+                        // Use unified confirm endpoint
+                        const isRequest = order.type === 'request';
+                        const endpoint = isRequest 
+                            ? `${PAYMENT_BASE}/api/guest/payment/delivery/confirm`
+                            : `${PAYMENT_BASE}/api/guest/payment/confirm`;
+
+                        const confirmRes = await axios.post(endpoint, {
+                            tenant_id: state.tenantId,
+                            request_id: id,
+                            order_id: id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        });
+
+                        if (confirmRes.data.success) {
+                            await loadDeliveryOrders(false);
+                        } else {
+                            alert("Payment recorded but order update failed. Please notify the staff.");
+                        }
+                    } catch (e) {
+                        console.error("[CONFIRM_ERROR]", e);
+                        alert("Sync failed. Don't worry, your payment is safe. Please check back in a minute.");
+                    }
+                },
+                prefill: {
+                    name: state.guestName || "",
+                    contact: state.guestPhone || "",
+                },
+                theme: { color: "#f97316" },
+                modal: {
+                    ondismiss: function () {
+                        console.log('Payment modal dismissed by user');
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response){
+                console.error("[RAZORPAY_FAILURE]", response.error);
+                alert("Payment Failed: " + response.error.description);
+            });
+            rzp.open();
+        };
+
+            let html = '';
+
+            if (active.length > 0) {
+                html += active.map(renderCard).join('');
+            }
+
+            if (history.length > 0) {
+                if (active.length > 0) {
+                    html += `<div class="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-2 pb-1 px-1">Past Orders</div>`;
+                }
+                html += history.map(renderCard).join('');
+            }
+
+            container.innerHTML = html;
         }
 
-        window.cancelDeliveryOrder = async (request_id) => {
-            const order = state.deliveryOrders.find(o => o.request_id === request_id);
+        window.cancelDeliveryOrder = async (id) => {
+            const order = state.deliveryOrders.find(o => o.id === id);
             if (!order) return;
 
-            if (!confirm('Cancel this delivery order?')) return;
+            const isPaid = order.payment_status === 'paid' || order.payment_status === 'authorized';
+            const confirmMsg = isPaid 
+                ? 'Cancel this order? Since you have already paid, a full refund will be initiated automatically.' 
+                : 'Are you sure you want to cancel this order?';
+
+            if (!confirm(confirmMsg)) return;
 
             try {
-                const res = await axios.delete(`${LAMBDA_URL}/request`, {
-                    data: { tenant_id: state.tenantId, request_id }
+                // If it's a request (not yet approved), use the request delete endpoint
+                // If it's an approved order, we need to call the order cancel endpoint
+                const endpoint = order.type === 'request' ? `${LAMBDA_URL}/request` : `${PAYMENT_BASE}/api/orders/${id}/cancel`;
+                
+                const res = await axios({
+                    method: order.type === 'request' ? 'DELETE' : 'POST',
+                    url: endpoint,
+                    data: { 
+                        tenant_id: state.tenantId, 
+                        request_id: id,
+                        order_id: id,
+                        reason: "Cancelled by Guest"
+                    }
                 });
+
                 if (res.data.success) {
                     await loadDeliveryOrders(false);
                 } else {
-                    alert('Failed to cancel order');
+                    alert(res.data.error || 'Failed to cancel order');
                 }
             } catch (e) {
-                console.error('[CANCEL_DELIVERY]', e);
-                alert('Connection error. Please try again.');
+                console.error('[CANCEL_ORDER_ERROR]', e);
+                const msg = e.response?.data?.error || 'Connection error. Please try again.';
+                alert(msg);
             }
         };
 
@@ -921,7 +1150,9 @@
 
             if (!state.isDeliveryMode || !state.isDeliveryInitialized) { bar.classList.add('hidden'); return; }
 
-            const orders = state.deliveryOrders;
+            // Banner only counts active orders, not history (denied/refunded/completed)
+            const ACTIVE_STATUSES = ['awaiting_payment', 'pending', 'approved', 'in_transit'];
+            const orders = (state.deliveryOrders || []).filter(o => ACTIVE_STATUSES.includes(o.status));
             if (orders.length === 0) { bar.classList.add('hidden'); return; }
 
             const awaitingPayment = orders.filter(o => o.status === 'awaiting_payment');
@@ -953,9 +1184,43 @@
             }
         }
 
+        // Persistent "My Orders" banner: shown whenever the user has any order history (active or past).
+        // Separate from the active-order status bar — this one never disappears once orders exist.
+        function renderMyOrdersBanner() {
+            let btn = document.getElementById('my-orders-persistent-btn');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = 'my-orders-persistent-btn';
+                btn.onclick = openDeliveryOrdersScreen;
+                btn.className = 'hidden fixed right-4 z-40 flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-full px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 active:scale-95 transition-all';
+                document.body.appendChild(btn);
+            }
+
+            if (!state.isDeliveryMode || !state.isDeliveryInitialized || !state.deliveryOrders?.length) {
+                btn.classList.add('hidden');
+                return;
+            }
+
+            const ACTIVE_STATUSES = ['awaiting_payment', 'pending', 'approved', 'in_transit'];
+            const activeCount = (state.deliveryOrders).filter(o => ACTIVE_STATUSES.includes(o.status)).length;
+            const totalCount = state.deliveryOrders.length;
+
+            // Drop below the status bar when it's visible, otherwise sit at the very top
+            const statusBar = document.getElementById('delivery-status-bar');
+            const statusBarVisible = statusBar && !statusBar.classList.contains('hidden');
+            btn.style.top = statusBarVisible ? (statusBar.offsetHeight + 8) + 'px' : '12px';
+
+            btn.classList.remove('hidden');
+            if (activeCount > 0) {
+                btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"></span> My Orders <span class="bg-green-100 text-green-700 text-xs font-bold px-1.5 py-0.5 rounded-full">${activeCount} active</span>`;
+            } else {
+                btn.innerHTML = `<span>📋</span> My Orders <span class="bg-gray-100 text-gray-500 text-xs font-bold px-1.5 py-0.5 rounded-full">${totalCount}</span>`;
+            }
+        }
+
         // Keep renderStatusBar as a no-op for non-delivery (called in some legacy places)
         function renderStatusBar() {
-            if (state.isDeliveryMode) renderDeliveryStatusBanner();
+            if (state.isDeliveryMode) { renderDeliveryStatusBanner(); renderMyOrdersBanner(); }
         }
 
         function normalizeTenDigitPhone(input) {
@@ -1115,8 +1380,8 @@
             }
 
             const logoBlock = hasLogo
-                ? `<div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl shadow-sm mb-4 bg-white overflow-hidden"><img src="${String(restaurant_logo).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}" alt="" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="inline-flex items-center justify-center w-full h-full text-2xl" style="display: none;">🍽️</span></div>`
-                : `<div class="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl shadow-sm mb-4 text-2xl">🍽️</div>`;
+                ? `<div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl shadow-sm mb-4 bg-white overflow-hidden"><img src="${String(restaurant_logo).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}" alt="" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /></div>`
+                : ``;
 
             header.innerHTML = `
                 <div class="h-24 flex items-center justify-center">${logoBlock}</div>
@@ -2479,7 +2744,8 @@
                             const deliveryCartTotal = Object.values(state.cart).reduce((s, c) => s + ((c.price ?? c.item.price) * c.qty), 0);
                             const deliveryCharge = Number(state.settings.delivery_charge) || 0;
                             const deliveryGrandTotal = deliveryCartTotal + deliveryCharge;
-
+                            console.log("deliveryPaymentMode",deliveryPaymentMode)
+                            console.log("hasRazorpay",hasRazorpay)
                             if (deliveryPaymentMode === 'postpaid') {
                                 submitBtn.setAttribute('onclick', 'submitOrder()');
                                 submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>🚚 Place Order · Pay on Delivery</span></span>`;
