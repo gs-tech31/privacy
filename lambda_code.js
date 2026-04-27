@@ -52,11 +52,13 @@ export const handler = async (event) => {
       // Check if it's a backend endpoint we need to proxy
       // We proxy: Settings, Table Status, Request Status, Pickup Status
       const isBackendEndpoint = path && (
-          path.includes('/request/status') || 
+          path.includes('/request/status') ||
           path.includes('/settings') ||
           path.includes('/table/status') ||
           path.includes('/pickup/status') ||
-          path.includes('/pickup/order')
+          path.includes('/pickup/order') ||
+          path.includes('/room-service/menu') ||
+          path.includes('/room-service/request/status')
       );
 
       if (isBackendEndpoint) {
@@ -109,13 +111,25 @@ async function proxyToBackend(method, path, body, queryParams, corsHeaders) {
       // Lambda might receive paths like: /api/guest/order/request/settings (wrong structure)
       
       // IMPORTANT: Check DELETE /request FIRST before /order/request to avoid conflicts
-      // Handle DELETE /request (cancel request) - path might be /api/guest/order/request/request
+      // Room Service DELETE must be checked before food cancel — both paths end with /request
       if (method === 'DELETE') {
-          // Check if path ends with /request (could be /request or /api/guest/order/request/request)
-          if (normalizedPath.endsWith('/request') && !normalizedPath.includes('/request/status')) {
+          if (normalizedPath.includes('/room-service/request')) {
+              normalizedPath = '/api/room-service/request';
+              console.log(`[Proxy] Room Service DELETE, normalizing to: ${normalizedPath}`);
+          } else if (normalizedPath.endsWith('/request') && !normalizedPath.includes('/request/status')) {
               normalizedPath = '/api/guest/lambda/request';
               console.log(`[Proxy] DELETE request detected, normalizing to: ${normalizedPath}`);
           }
+      }
+      // Room Service paths — must come before food paths to avoid /request/status conflict
+      else if (normalizedPath.includes('/room-service/menu')) {
+          normalizedPath = '/api/room-service/menu';
+      }
+      else if (normalizedPath.includes('/room-service/request/status')) {
+          normalizedPath = '/api/room-service/request/status';
+      }
+      else if (method === 'POST' && normalizedPath.includes('/room-service/request')) {
+          normalizedPath = '/api/room-service/request';
       }
       // Handle settings endpoint - can come as /settings, /api/guest/settings, or /api/guest/order/request/settings
       else if (normalizedPath.includes('/settings') && !normalizedPath.includes('/request/status')) {

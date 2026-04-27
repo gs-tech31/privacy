@@ -89,6 +89,13 @@
             }
         }
 
+        /* Smooth tab switching — fade without layout shift */
+        #search-input-wrapper,
+        #group-chips,
+        #category-chips {
+            transition: opacity 0.3s ease;
+        }
+
         /* Smooth image loading */
         img {
             transition: opacity 0.3s ease-in-out;
@@ -126,7 +133,7 @@
         <!-- Search Bar -->
         <div class="sticky top-0 z-40 bg-gray-50/95 backdrop-blur-md pb-4 pt-2 -mx-4 px-4 sm:px-6 transition-all duration-300 shadow-sm"
             id="search-bar-container">
-            <div class="relative max-w-lg mx-auto">
+            <div id="search-input-wrapper" class="relative max-w-lg mx-auto">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
@@ -160,6 +167,18 @@
                 id="category-chips">
                 <!-- Injected dynamically -->
             </div>
+
+            <!-- Room Service Tab Switcher — only shown on room QR scans -->
+            <div id="tab-switcher" class="hidden max-w-lg mx-auto mt-4 flex gap-2">
+                <button id="tab-food" onclick="switchTab('food')"
+                    class="flex-1 py-2.5 rounded-xl font-bold text-sm bg-gray-900 text-white transition-all">
+                    🍽️ Restaurant Menu
+                </button>
+                <button id="tab-room-service" onclick="switchTab('room_service')"
+                    class="flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-gray-600 border border-gray-200 transition-all">
+                    🛎️ Room Service
+                </button>
+            </div>
         </div>
 
         <!-- Cart Summary (Top of Menu) -->
@@ -188,6 +207,43 @@
                     <span class="font-bold text-orange-600 text-lg" id="cart-summary-total-amount">₹0</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Room Service Cart Summary (Top) -->
+        <div id="rs-cart-summary-top" class="hidden mt-6 mb-6">
+            <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-900 text-lg flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Cart
+                    </h3>
+                    <button onclick="openRsCart()" class="text-sm font-semibold text-orange-600 hover:text-orange-700">
+                        View All
+                    </button>
+                </div>
+                <div id="rs-cart-summary-items" class="space-y-2">
+                    <!-- RS cart items injected here -->
+                </div>
+                <div id="rs-cart-summary-total" class="hidden mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+                    <span class="font-bold text-gray-700 text-sm">Total:</span>
+                    <span class="font-bold text-orange-600 text-lg" id="rs-cart-summary-total-amount">₹0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Service Status Banner -->
+        <div id="rs-status-banner" class="hidden mt-4 mb-2 px-4 py-3 rounded-2xl text-sm font-semibold text-center"></div>
+        <!-- Room Service Cancel Button -->
+        <div class="flex justify-center mt-3">
+            <button id="rs-cancel-btn" onclick="cancelRoomServiceRequest()"
+                class="hidden px-4 py-2 rounded-full border border-red-200 bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 active:scale-95 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel Request
+            </button>
         </div>
 
         <!-- Items Grid -->
@@ -224,6 +280,23 @@
             <span class="cart-action-text">View Cart</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Room Service Submit Bar -->
+    <div id="rs-submit-bar" onclick="openRsCart()" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] max-w-md glass-panel bg-gray-900/95 text-white shadow-2xl rounded-full p-2 z-50 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ring-1 ring-white/20 flex items-center justify-between pr-5 pl-2 backdrop-blur-xl">
+        <div class="flex items-center gap-3">
+            <div class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg shadow-orange-500/30 transition-transform transform scale-100" id="rs-bar-count">0</div>
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Room Service</span>
+                <span class="text-lg font-bold text-white leading-none" id="rs-bar-items-label">items</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 font-bold text-sm text-white">
+            <span>View Cart</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
         </div>
@@ -405,6 +478,91 @@
         </div>
     </div>
 
+    <!-- Room Service Cart Modal -->
+    <div id="rs-cart-modal" class="fixed inset-0 z-[60] hidden flex-col justify-end md:justify-center md:items-center pointer-events-none">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity duration-300" onclick="closeRsCart()"></div>
+        <div class="relative w-full md:w-[95%] md:max-w-md bg-white rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up transform transition-transform overflow-hidden pointer-events-auto">
+
+            <!-- Header -->
+            <div class="p-5 border-b border-gray-100 bg-white z-10">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-2xl font-bold text-gray-900 font-display">🛎️ Room Service</h2>
+                    <button onclick="closeRsCart()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ETA / Status pill -->
+            <div id="rs-eta-pill" class="hidden mx-5 mt-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-center">
+                <span id="rs-eta-text" class="text-green-700 font-semibold text-sm"></span>
+            </div>
+
+            <!-- Content (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
+
+                <!-- Denial banner -->
+                <div id="rs-denial-banner" class="hidden mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <p id="rs-denial-text" class="text-red-700 text-sm font-semibold"></p>
+                </div>
+
+                <!-- Already Requested section (read-only) -->
+                <div id="rs-existing-items-section" class="hidden mb-6 border border-green-100 bg-green-50/50 rounded-2xl p-4">
+                    <h3 class="font-bold text-green-800 text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Already Requested
+                    </h3>
+                    <div id="rs-existing-items-list" class="space-y-2 text-sm text-gray-700"></div>
+                </div>
+
+                <!-- New items list -->
+                <div id="rs-cart-modal-items" class="space-y-1"></div>
+
+                <!-- Combined totals -->
+                <div id="rs-combined-total-section" class="hidden mt-4 space-y-1">
+                    <div id="rs-approved-total-row" class="hidden items-center justify-between py-2 border-t border-gray-100 flex">
+                        <span class="text-sm font-semibold text-green-700">Approved Total</span>
+                        <span id="rs-approved-total-amount" class="font-bold text-green-700 text-sm"></span>
+                    </div>
+                    <div id="rs-new-total-row" class="hidden items-center justify-between py-2 border-t border-gray-100 flex">
+                        <span class="text-sm font-semibold text-orange-600">New Items Total</span>
+                        <span id="rs-new-total-amount" class="font-bold text-orange-600 text-sm"></span>
+                    </div>
+                </div>
+
+                <!-- Guest Details -->
+                <div class="pt-6 mt-6 border-t border-gray-100 space-y-4">
+                    <h3 class="font-bold text-gray-900 text-sm uppercase tracking-wide">Guest Details <span class="text-red-500">*</span></h3>
+                    <input type="text" id="rs-guest-name" placeholder="Your Name"
+                        oninput="state.rsGuestName = this.value; state.guestName = this.value; saveGuestIdentity(); updateRsSubmitBtn();"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
+                    <input type="tel" id="rs-guest-phone" placeholder="Phone Number"
+                        oninput="state.rsGuestPhone = this.value; state.guestPhone = this.value; saveGuestIdentity(); updateRsSubmitBtn();"
+                        class="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-orange-200 text-gray-900 placeholder-gray-400 font-medium text-sm">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl space-y-3">
+                <button id="rs-modal-cancel-btn" onclick="cancelRoomServiceRequest()"
+                    class="hidden w-full py-3 bg-red-50 text-red-700 rounded-xl font-bold text-base border-2 border-red-200 shadow-sm hover:bg-red-100 active:scale-[0.98] transition-all">
+                    Cancel Request
+                </button>
+                <button id="rs-modal-submit-btn" onclick="submitRoomServiceRequest()"
+                    class="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-lg shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 px-6">
+                    <span>Request Items</span>
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Pickup Identity Gate (Full-page overlay for pickup QR) -->
     <div id="pickup-gate-overlay"
         class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -445,6 +603,33 @@
         </div>
     </div>
 
+    <!-- Guest House Service Selection Gate -->
+    <div id="service-gate-overlay"
+        class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div class="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6">
+            <div class="text-center mb-6">
+                <div
+                    class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🛎️
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-1">Welcome!</h3>
+                <p class="text-gray-500 text-sm">How would you like to order?</p>
+            </div>
+            <div class="space-y-3">
+                <button onclick="handleServiceGateSelect('food')"
+                    class="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+                    <span class="text-xl">🍽️</span>
+                    Restaurant Menu
+                </button>
+                <button onclick="handleServiceGateSelect('room_service')"
+                    class="w-full py-4 bg-white border-2 border-gray-200 text-gray-800 rounded-2xl font-bold text-base hover:border-orange-400 hover:bg-orange-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+                    <span class="text-xl">🛎️</span>
+                    Room Service
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // State
@@ -479,6 +664,14 @@
             denialReason: null,
             countdownIntervalId: null,
             editingItemKey: null, // Track which cart item is being edited for notes
+            // Room Service
+            activeTab: 'food',
+            roomServiceItems: [],
+            roomServiceCart: {},
+            roomServiceRequest: null,
+            roomServicePollingIntervalId: null,
+            rsGuestName: '',
+            rsGuestPhone: '',
         };
 
         // Initialize pickup flags from URL (separate QR for pickup)
@@ -508,8 +701,8 @@
                 console.log('[PREFILL] loadGuestIdentity: raw localStorage =', saved);
                 if (!saved) { console.log('[PREFILL] loadGuestIdentity: nothing in localStorage'); return; }
                 const { name, phone } = JSON.parse(saved);
-                if (name) state.guestName = name;
-                if (phone) state.guestPhone = phone;
+                if (name) { state.guestName = name; state.rsGuestName = name; }
+                if (phone) { state.guestPhone = phone; state.rsGuestPhone = phone; }
                 console.log('[PREFILL] loadGuestIdentity: loaded name=' + state.guestName + ' phone=' + state.guestPhone);
             } catch (_) { }
         }
@@ -522,11 +715,46 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
         // ... Initialization ... 
+
+        function showServiceGate() {
+            const overlay = document.getElementById('service-gate-overlay');
+            if (!overlay) return;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        window.handleServiceGateSelect = (type) => {
+            const overlay = document.getElementById('service-gate-overlay');
+            if (overlay) {
+                const card = overlay.querySelector('.relative');
+                if (card) {
+                    card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+                    card.style.transform = 'scale(0.95)';
+                    card.style.opacity = '0';
+                }
+                overlay.style.transition = 'opacity 0.3s ease';
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                    overlay.style.opacity = '';
+                    overlay.style.transition = '';
+                    if (card) { card.style.transform = ''; card.style.opacity = ''; card.style.transition = ''; }
+                    if (type === 'room_service') {
+                        switchTab('room_service');
+                    }
+                }, 300);
+            } else {
+                if (type === 'room_service') {
+                    switchTab('room_service');
+                }
+            }
+        };
 
         function renderPickupGateIfNeeded() {
             const overlay = document.getElementById('pickup-gate-overlay');
@@ -652,6 +880,14 @@
 
 
                 renderMenu();
+
+                // Show service-selection popup and pre-fetch RS items if this is a room QR
+                // Skip popup for pickup and delivery modes
+                const isDelivery = urlParams.get('delivery') === 'true' || urlParams.get('delivery') === '1';
+                if (urlParams.get('room_id') && !state.isPickupMode && !isDelivery) {
+                    fetchRoomServiceMenu();
+                    showServiceGate();
+                }
 
                 // 3. Initial Status Check
                 if (state.isPickupMode) {
@@ -1359,7 +1595,7 @@
                                  <h3 class="font-bold text-gray-900 leading-tight mb-1 text-[15px]">${item.name}</h3>
                                  ${vegDot}
                             </div>
-                            <p class="font-bold text-gray-900 text-sm">₹${item.price}</p>
+                            ${(item.price != null && item.price !== '') ? `<p class="font-bold text-gray-900 text-sm">₹${item.price}</p>` : ''}
                         </div>
                         <div class="flex justify-end mt-2" id="qty-wrapper-${item.item_code}" onclick="event.stopPropagation()">
                             ${getQtyButtonHTML(String(item.item_code), isSoldOut)}
@@ -1566,6 +1802,11 @@
 
         window.updateCartBarUI = () => {
             const bar = document.getElementById('cart-bar');
+            // On Room Service tab, keep food bar hidden
+            if (state.activeTab === 'room_service') {
+                bar.classList.add('hidden');
+                return;
+            }
             const items = Object.values(state.cart);
 
             // Calculate new items total (excluding pending items)
@@ -1662,6 +1903,10 @@
 
         window.updateCartSummaryTop = () => {
             const summaryContainer = document.getElementById('cart-summary-top');
+            if (state.activeTab === 'room_service') {
+                summaryContainer.classList.add('hidden');
+                return;
+            }
             const itemsContainer = document.getElementById('cart-summary-items');
             const totalContainer = document.getElementById('cart-summary-total');
             const totalAmountEl = document.getElementById('cart-summary-total-amount');
@@ -1713,6 +1958,59 @@
                 <div class="text-center py-2 text-sm text-gray-500 font-medium">
                     and ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
                 </div>
+            ` : '');
+        };
+
+        window.updateRsCartSummaryTop = () => {
+            const summaryContainer = document.getElementById('rs-cart-summary-top');
+            if (!summaryContainer) return;
+            if (state.activeTab !== 'room_service') {
+                summaryContainer.classList.add('hidden');
+                return;
+            }
+            const entries = Object.values(state.roomServiceCart);
+            if (entries.length === 0) {
+                summaryContainer.classList.add('hidden');
+                return;
+            }
+            summaryContainer.classList.remove('hidden');
+
+            const total = entries.reduce((sum, e) => sum + ((e.item.price || 0) * e.qty), 0);
+            const totalContainer = document.getElementById('rs-cart-summary-total');
+            const totalAmountEl = document.getElementById('rs-cart-summary-total-amount');
+            if (totalContainer) {
+                if (total > 0) {
+                    totalContainer.classList.remove('hidden');
+                    if (totalAmountEl) totalAmountEl.textContent = '₹' + total;
+                } else {
+                    totalContainer.classList.add('hidden');
+                }
+            }
+
+            const maxVisible = 5;
+            const visibleEntries = entries.slice(0, maxVisible);
+            const remainingCount = entries.length - maxVisible;
+            const itemsContainer = document.getElementById('rs-cart-summary-items');
+            if (!itemsContainer) return;
+
+            itemsContainer.innerHTML = visibleEntries.map(entry => {
+                const escapedId = entry.item.item_id.replace(/'/g, "\\'");
+                const lineTotal = (entry.item.price || 0) * entry.qty;
+                return `
+                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-gray-900 text-sm truncate">${entry.item.item_name}</div>
+                            ${lineTotal > 0 ? `<div class="text-orange-600 font-bold text-xs">₹${lineTotal}</div>` : ''}
+                        </div>
+                        <div class="flex items-center bg-gray-100 rounded-lg h-7 ml-3">
+                            <button onclick="updateRoomServiceCart('${escapedId}', -1); updateRsCartSummaryTop();" class="w-7 h-full flex items-center justify-center font-bold text-gray-600 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">-</button>
+                            <span class="w-5 text-center font-bold text-xs text-gray-900">${entry.qty}</span>
+                            <button onclick="updateRoomServiceCart('${escapedId}', 1); updateRsCartSummaryTop();" class="w-7 h-full flex items-center justify-center font-bold text-gray-900 text-sm hover:bg-gray-200 active:bg-gray-300 transition-colors">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join('') + (remainingCount > 0 ? `
+                <div class="text-center py-2 text-sm text-gray-500 font-medium">and ${remainingCount} more item${remainingCount > 1 ? 's' : ''}</div>
             ` : '');
         };
 
@@ -2667,6 +2965,538 @@
                 popup.classList.add('flex');
             }
         };
+
+        // ─── ROOM SERVICE ────────────────────────────────────────────
+
+        window.switchTab = (tab) => {
+            state.activeTab = tab;
+            const foodBtn = document.getElementById('tab-food');
+            const rsBtn = document.getElementById('tab-room-service');
+            const activeClass = 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-gray-900 text-white transition-all';
+            const inactiveClass = 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-gray-600 border border-gray-200 transition-all';
+
+            const groupChips = document.getElementById('group-chips');
+            const catChips = document.getElementById('category-chips');
+            const searchWrapper = document.getElementById('search-input-wrapper');
+
+            const searchBarContainer = document.getElementById('search-bar-container');
+            const header = document.getElementById('restaurant-header');
+            if (tab === 'food') {
+                foodBtn.className = activeClass;
+                rsBtn.className = inactiveClass;
+                if (searchBarContainer) searchBarContainer.classList.remove('hidden');
+                if (header) { header.classList.remove('mb-2'); header.classList.add('mb-8'); }
+                groupChips.style.opacity = '1';
+                groupChips.style.pointerEvents = '';
+                catChips.style.opacity = '1';
+                catChips.style.pointerEvents = '';
+                searchWrapper.style.opacity = '1';
+                searchWrapper.style.pointerEvents = '';
+                document.getElementById('rs-submit-bar').classList.add('hidden');
+                document.getElementById('rs-status-banner').classList.add('hidden');
+                document.getElementById('rs-cancel-btn').classList.add('hidden');
+                document.getElementById('rs-cart-summary-top').classList.add('hidden');
+                renderMenu(true);
+                updateCartBarUI();
+            } else {
+                rsBtn.className = activeClass;
+                foodBtn.className = inactiveClass;
+                if (searchBarContainer) searchBarContainer.classList.add('hidden');
+                if (header) { header.classList.remove('mb-8'); header.classList.add('mb-2'); }
+                document.getElementById('cart-bar').classList.add('hidden');
+                document.getElementById('cart-summary-top').classList.add('hidden');
+
+                // Show spinner, then fade in the RS menu
+                const container = document.getElementById('items-container');
+                container.style.transition = '';
+                container.style.opacity = '1';
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20">
+                        <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+                        <p class="text-gray-500 mt-4 font-medium animate-pulse">Loading room service...</p>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    container.style.transition = 'opacity 0.25s ease';
+                    container.style.opacity = '0';
+                    setTimeout(() => {
+                        renderRoomServiceMenu();
+                        container.style.transition = 'opacity 0.35s ease';
+                        container.style.opacity = '1';
+                    }, 250);
+                }, 500);
+
+                updateRoomServiceSubmitBar();
+                updateRsCartSummaryTop();
+                renderRoomServiceStatusBanner();
+            }
+        };
+
+        async function fetchRoomServiceMenu() {
+            try {
+                const res = await axios.get(`${LAMBDA_URL}/room-service/menu`, {
+                    params: { tenant_id: state.tenantId }
+                });
+                state.roomServiceItems = res.data.items || [];
+            } catch (err) {
+                console.error('[Room Service] Failed to fetch menu:', err);
+                state.roomServiceItems = [];
+            }
+        }
+
+        function renderRoomServiceMenu() {
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+
+            if (state.roomServiceItems.length === 0) {
+                container.innerHTML = '<div class="text-center py-20 text-gray-400 font-medium">No room service items available</div>';
+                return;
+            }
+
+            const grouped = {};
+            state.roomServiceItems.forEach(item => {
+                const cat = item.category || 'General';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+            });
+
+            Object.entries(grouped).forEach(([category, items]) => {
+                const section = document.createElement('div');
+                section.className = 'w-full';
+
+                const title = document.createElement('h2');
+                title.className = 'text-xl font-bold text-gray-800 mb-4 sticky top-0 bg-gray-50/95 backdrop-blur-sm p-2 z-10 flex items-center';
+                title.innerHTML = `<span class="w-1 h-5 bg-blue-500 rounded-full mr-3"></span>${category}`;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+                items.forEach(item => grid.appendChild(createRoomServiceCard(item)));
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        function createRoomServiceCard(item) {
+            const div = document.createElement('div');
+            div.className = 'bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-4 hover:shadow-md transition-shadow';
+            div.id = `rs-card-${item.item_id}`;
+
+            const qty = state.roomServiceCart[item.item_id]?.qty || 0;
+            const escapedId = item.item_id.replace(/'/g, "\\'");
+            const qtyHtml = qty === 0
+                ? `<button onclick="updateRoomServiceCart('${escapedId}', 1)" class="bg-blue-50 text-blue-600 font-extrabold text-xs px-5 py-2 rounded-xl shadow-sm border border-blue-100 active:bg-blue-100 uppercase tracking-wide">ADD</button>`
+                : `<div class="flex items-center bg-gray-900 text-white rounded-lg shadow-md h-8">
+                       <button onclick="updateRoomServiceCart('${escapedId}', -1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 rounded-l-lg">-</button>
+                       <span class="w-6 text-center font-bold text-sm">${qty}</span>
+                       <button onclick="updateRoomServiceCart('${escapedId}', 1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 rounded-r-lg">+</button>
+                   </div>`;
+
+            const rsImgUrl = `https://digikhana-production.s3.amazonaws.com/item/${state.tenantId}/${item.item_id}.jpg`;
+            const rsHasPrice = item.price != null && item.price !== '';
+            div.innerHTML = `
+                <div class="h-24 w-24 flex-shrink-0 rounded-xl bg-gray-100 overflow-hidden relative">
+                    <img src="${rsImgUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                </div>
+                <div class="flex-1 flex flex-col ${rsHasPrice ? 'justify-between' : 'justify-center gap-3'}">
+                    <div>
+                        <h3 class="font-bold text-gray-900 leading-tight mb-1 text-[15px]">${item.item_name}</h3>
+                        ${item.description ? `<p class="text-gray-400 text-xs mt-1">${item.description}</p>` : ''}
+                        ${rsHasPrice ? `<p class="font-bold text-gray-900 text-sm">₹${item.price}</p>` : ''}
+                    </div>
+                    <div class="flex justify-end" id="rs-qty-wrapper-${item.item_id}" onclick="event.stopPropagation()">
+                        ${qtyHtml}
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        window.updateRoomServiceCart = (item_id, change) => {
+            const item = state.roomServiceItems.find(i => i.item_id === item_id);
+            if (!item) return;
+
+            if (!state.roomServiceCart[item_id]) {
+                if (change < 0) return;
+                state.roomServiceCart[item_id] = { qty: 0, item };
+            }
+
+            state.roomServiceCart[item_id].qty += change;
+            if (state.roomServiceCart[item_id].qty <= 0) delete state.roomServiceCart[item_id];
+
+            const wrapper = document.getElementById(`rs-qty-wrapper-${item_id}`);
+            if (wrapper) {
+                const newQty = state.roomServiceCart[item_id]?.qty || 0;
+                const escapedId = item_id.replace(/'/g, "\\'");
+                wrapper.innerHTML = newQty === 0
+                    ? `<button onclick="updateRoomServiceCart('${escapedId}', 1)" class="bg-blue-50 text-blue-600 font-extrabold text-xs px-5 py-2 rounded-xl shadow-sm border border-blue-100 active:bg-blue-100 uppercase tracking-wide">ADD</button>`
+                    : `<div class="flex items-center bg-gray-900 text-white rounded-lg shadow-md h-8">
+                           <button onclick="updateRoomServiceCart('${escapedId}', -1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 rounded-l-lg">-</button>
+                           <span class="w-6 text-center font-bold text-sm">${newQty}</span>
+                           <button onclick="updateRoomServiceCart('${escapedId}', 1)" class="w-8 h-full flex items-center justify-center font-bold text-lg hover:bg-white/10 rounded-r-lg">+</button>
+                       </div>`;
+            }
+            updateRoomServiceSubmitBar();
+            updateRsCartSummaryTop();
+        };
+
+        function updateRoomServiceSubmitBar() {
+            const bar = document.getElementById('rs-submit-bar');
+            if (!bar) return;
+            const count = Object.values(state.roomServiceCart).reduce((sum, e) => sum + e.qty, 0);
+            const req = state.roomServiceRequest;
+            const hasActiveRequest = req && (req.status === 'pending' || req.status === 'approved');
+            const countEl = document.getElementById('rs-bar-count');
+            const labelEl = document.getElementById('rs-bar-items-label');
+            if (count === 0 && !hasActiveRequest) {
+                bar.classList.add('hidden');
+                return;
+            }
+            bar.classList.remove('hidden');
+            if (count > 0) {
+                if (countEl) countEl.textContent = count;
+                if (labelEl) labelEl.textContent = count === 1 ? 'item' : 'items';
+            } else if (req?.status === 'pending') {
+                if (countEl) countEl.textContent = '⏳';
+                if (labelEl) labelEl.textContent = 'Request Pending';
+            } else if (req?.status === 'approved') {
+                if (countEl) countEl.textContent = '✅';
+                if (labelEl) labelEl.textContent = 'Request Approved';
+            }
+        }
+
+        window.openRsCart = () => {
+            renderRsCartModalItems();
+            renderRsModalStatus();
+            const nameInput = document.getElementById('rs-guest-name');
+            const phoneInput = document.getElementById('rs-guest-phone');
+            const prefillName = state.rsGuestName || state.guestName;
+            const prefillPhone = state.rsGuestPhone || state.guestPhone;
+            if (nameInput && prefillName) { nameInput.value = prefillName; state.rsGuestName = prefillName; }
+            if (phoneInput && prefillPhone) { phoneInput.value = prefillPhone; state.rsGuestPhone = prefillPhone; }
+            updateRsSubmitBtn();
+            const modal = document.getElementById('rs-cart-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeRsCart = () => {
+            const modal = document.getElementById('rs-cart-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        };
+
+        function renderRsModalStatus() {
+            const req = state.roomServiceRequest;
+
+            // ETA / status pill
+            const etaPill = document.getElementById('rs-eta-pill');
+            const etaText = document.getElementById('rs-eta-text');
+            if (etaPill && etaText) {
+                if (req?.status === 'approved') {
+                    etaText.textContent = req.estimated_minutes
+                        ? `✅ Request approved! Arriving in ${req.estimated_minutes} min.`
+                        : '✅ Request approved!';
+                    etaText.className = 'text-green-700 font-semibold text-sm';
+                    etaPill.className = 'mx-5 mt-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-center';
+                } else if (req?.status === 'pending') {
+                    etaText.textContent = '⏳ Request sent. Staff will attend shortly.';
+                    etaText.className = 'text-blue-700 font-semibold text-sm';
+                    etaPill.className = 'mx-5 mt-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-center';
+                } else {
+                    etaPill.classList.add('hidden');
+                }
+            }
+
+            // Denial banner
+            const denialBanner = document.getElementById('rs-denial-banner');
+            const denialText = document.getElementById('rs-denial-text');
+            if (denialBanner && denialText) {
+                if (req?.denial_reason) {
+                    denialText.textContent = `Your last request was declined: ${req.denial_reason}`;
+                    denialBanner.classList.remove('hidden');
+                } else {
+                    denialBanner.classList.add('hidden');
+                }
+            }
+
+            // Already Requested section
+            const existingSection = document.getElementById('rs-existing-items-section');
+            const existingList = document.getElementById('rs-existing-items-list');
+            if (existingSection && existingList) {
+                const reqItems = req?.items;
+                if (reqItems?.length && (req.status === 'approved' || req.status === 'pending')) {
+                    const reqTotal = reqItems.reduce((s, i) => s + i.price * i.quantity, 0);
+                    existingList.innerHTML = reqItems.map(i => `
+                        <div class="flex items-center justify-between py-1.5">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span class="truncate text-gray-800 font-medium">${i.item_name}</span>
+                                <span class="text-gray-500 flex-shrink-0">×${i.quantity}</span>
+                            </div>
+                            ${i.price > 0 ? `<span class="font-semibold text-gray-700 flex-shrink-0 ml-2">₹${i.price * i.quantity}</span>` : ''}
+                        </div>
+                    `).join('');
+                    if (reqTotal > 0) {
+                        existingList.innerHTML += `
+                            <div class="mt-3 pt-3 border-t border-green-200 flex items-center justify-between">
+                                <span class="font-bold text-green-800 text-xs uppercase tracking-wide">Request Total</span>
+                                <span class="font-bold text-green-800">₹${reqTotal}</span>
+                            </div>
+                        `;
+                    }
+                    existingSection.classList.remove('hidden');
+                } else {
+                    existingSection.classList.add('hidden');
+                }
+            }
+
+            // Combined totals
+            const combinedSection = document.getElementById('rs-combined-total-section');
+            if (combinedSection) {
+                const approvedTotal = (req?.items || []).reduce((s, i) => s + i.price * i.quantity, 0);
+                const newTotal = Object.values(state.roomServiceCart).reduce((s, e) => s + (e.item.price || 0) * e.qty, 0);
+                const approvedRow = document.getElementById('rs-approved-total-row');
+                const approvedAmount = document.getElementById('rs-approved-total-amount');
+                const newRow = document.getElementById('rs-new-total-row');
+                const newAmount = document.getElementById('rs-new-total-amount');
+                if (approvedRow) {
+                    if (approvedTotal > 0 && newTotal > 0) {
+                        if (approvedAmount) approvedAmount.textContent = `₹${approvedTotal}`;
+                        approvedRow.classList.remove('hidden');
+                    } else {
+                        approvedRow.classList.add('hidden');
+                    }
+                }
+                if (newRow) {
+                    if (newTotal > 0 && approvedTotal > 0) {
+                        if (newAmount) newAmount.textContent = `₹${newTotal}`;
+                        newRow.classList.remove('hidden');
+                    } else {
+                        newRow.classList.add('hidden');
+                    }
+                }
+                combinedSection.classList.toggle('hidden', !(approvedTotal > 0 && newTotal > 0));
+            }
+
+            // Cancel button inside modal footer
+            const cancelBtn = document.getElementById('rs-modal-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.classList.toggle('hidden', req?.status !== 'pending');
+            }
+
+            // Hide submit button when request is pending and cart is empty
+            const submitBtn = document.getElementById('rs-modal-submit-btn');
+            if (submitBtn) {
+                const hasNewItems = Object.keys(state.roomServiceCart).length > 0;
+                submitBtn.classList.toggle('hidden', req?.status === 'pending' && !hasNewItems);
+            }
+        }
+
+        window.renderRsCartModalItems = () => {
+            const container = document.getElementById('rs-cart-modal-items');
+            if (!container) return;
+            const entries = Object.entries(state.roomServiceCart);
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">No items in cart</div>';
+                updateRoomServiceSubmitBar();
+                setTimeout(closeRsCart, 300);
+                return;
+            }
+            updateRoomServiceSubmitBar();
+            updateRsSubmitBtn();
+
+            const total = entries.reduce((sum, [, e]) => sum + ((e.item.price || 0) * e.qty), 0);
+
+            container.innerHTML = entries.map(([itemId, entry]) => {
+                const escapedId = itemId.replace(/'/g, "\\'");
+                const lineTotal = (entry.item.price || 0) * entry.qty;
+                return `
+                    <div class="flex flex-col py-3 border-b border-gray-50 last:border-0">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-gray-900 text-[15px] truncate">${entry.item.item_name}</div>
+                                ${lineTotal > 0 ? `<div class="text-orange-600 font-bold text-xs mt-0.5">₹${lineTotal}</div>` : ''}
+                            </div>
+                            <div class="flex items-center bg-gray-100 rounded-lg h-8 ml-3 flex-shrink-0">
+                                <button onclick="updateRoomServiceCart('${escapedId}', -1); renderRsCartModalItems();" class="w-8 h-full flex items-center justify-center font-bold text-gray-600 hover:bg-gray-200 active:bg-gray-300 rounded-l-lg">-</button>
+                                <span class="w-6 text-center font-bold text-sm text-gray-900">${entry.qty}</span>
+                                <button onclick="updateRoomServiceCart('${escapedId}', 1); renderRsCartModalItems();" class="w-8 h-full flex items-center justify-center font-bold text-gray-900 hover:bg-gray-200 active:bg-gray-300 rounded-r-lg">+</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (total > 0) {
+                container.innerHTML += `
+                    <div class="mt-4 pt-4 border-t-2 border-gray-100 flex items-center justify-between">
+                        <span class="font-bold text-gray-700 text-sm">Total</span>
+                        <span class="font-bold text-orange-600 text-lg">₹${total}</span>
+                    </div>
+                `;
+            }
+            renderRsModalStatus();
+        };
+
+        function getRsSubmitBlockReason() {
+            if (!state.rsGuestName || !state.rsGuestName.trim())
+                return 'Enter your name to continue';
+            const digits = (state.rsGuestPhone || '').replace(/\D/g, '');
+            if (digits.length !== 10)
+                return 'Enter a valid 10-digit phone number';
+            return null;
+        }
+
+        function updateRsSubmitBtn() {
+            const btn = document.getElementById('rs-modal-submit-btn');
+            if (!btn) return;
+            const blockReason = getRsSubmitBlockReason();
+            if (blockReason) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = `<span>${blockReason}</span>`;
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = '🛎️ Request Items';
+            }
+        }
+
+        window.submitRoomServiceRequest = async () => {
+            const btn = document.getElementById('rs-modal-submit-btn');
+            const cartEntries = Object.entries(state.roomServiceCart);
+            if (cartEntries.length === 0) return;
+
+            const guestName = (document.getElementById('rs-guest-name')?.value || state.rsGuestName || '').trim();
+            const guestPhone = (document.getElementById('rs-guest-phone')?.value || state.rsGuestPhone || '').trim();
+            if (!guestName || !guestPhone) {
+                alert('Please enter your name and phone number to place a request.');
+                return;
+            }
+            state.rsGuestName = guestName;
+            state.rsGuestPhone = guestPhone;
+
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+            const items = cartEntries.map(([item_id, entry]) => ({
+                item_id,
+                item_name: entry.item.item_name,
+                quantity: entry.qty,
+            }));
+
+            try {
+                const res = await axios.post(`${LAMBDA_URL}/room-service/request`, {
+                    tenant_id: state.tenantId,
+                    room_id: state.tableId,
+                    room_number: urlParams.get('room_number') || state.tableId,
+                    floor_id: urlParams.get('floor_id') || null,
+                    floor_name: urlParams.get('floor') || null,
+                    guest_name: state.rsGuestName,
+                    guest_phone: state.rsGuestPhone,
+                    items,
+                });
+
+                if (res.data.success) {
+                    const submittedItems = cartEntries.map(([item_id, entry]) => ({
+                        item_id,
+                        item_name: entry.item.item_name,
+                        quantity: entry.qty,
+                        price: entry.item.price || 0,
+                    }));
+                    state.roomServiceRequest = { request_id: res.data.request_id, status: 'pending', items: submittedItems };
+                    state.roomServiceCart = {};
+                    closeRsCart();
+                    updateRoomServiceSubmitBar();
+                    updateRsCartSummaryTop();
+                    renderRoomServiceMenu();
+                    renderRoomServiceStatusBanner();
+                    document.getElementById('confirm-dialog').classList.remove('hidden');
+                    document.getElementById('confirm-dialog').classList.add('flex');
+                    if (state.roomServicePollingIntervalId) clearInterval(state.roomServicePollingIntervalId);
+                    state.roomServicePollingIntervalId = setInterval(checkRoomServiceStatus, 5000);
+                } else {
+                    alert('Failed to submit request. Please try again.');
+                }
+            } catch (err) {
+                console.error('[Room Service] Submit failed:', err);
+                alert('Connection error. Please try again.');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '🛎️ Request Items'; }
+            }
+        };
+
+        async function checkRoomServiceStatus() {
+            if (!state.roomServiceRequest?.request_id) return;
+            try {
+                const res = await axios.get(`${LAMBDA_URL}/room-service/request/status`, {
+                    params: { tenant_id: state.tenantId, request_id: state.roomServiceRequest.request_id }
+                });
+                if (res.data.success) {
+                    state.roomServiceRequest.status = res.data.status;
+                    state.roomServiceRequest.denial_reason = res.data.denial_reason;
+                    state.roomServiceRequest.estimated_minutes = res.data.estimated_minutes;
+                    if (state.activeTab === 'room_service') renderRoomServiceStatusBanner();
+                    const rsModal = document.getElementById('rs-cart-modal');
+                    if (rsModal && !rsModal.classList.contains('hidden')) renderRsModalStatus();
+                    if (['approved', 'denied', 'cancelled'].includes(res.data.status)) {
+                        clearInterval(state.roomServicePollingIntervalId);
+                        state.roomServicePollingIntervalId = null;
+                    }
+                }
+            } catch (err) {
+                console.error('[Room Service] Status check failed silently:', err);
+            }
+        }
+
+        function renderRoomServiceStatusBanner() {
+            const banner = document.getElementById('rs-status-banner');
+            const cancelBtn = document.getElementById('rs-cancel-btn');
+            if (!banner) return;
+
+            const req = state.roomServiceRequest;
+            if (!req) { banner.classList.add('hidden'); if (cancelBtn) cancelBtn.classList.add('hidden'); return; }
+
+            const config = {
+                pending:   { text: '⏳ Your request has been sent. Staff will attend shortly.', cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
+                approved:  { text: `✅ Request approved!${req.estimated_minutes ? ' Arriving in ' + req.estimated_minutes + ' min.' : ''}`, cls: 'bg-green-50 text-green-700 border border-green-200' },
+                denied:    { text: `❌ Request declined${req.denial_reason ? ': ' + req.denial_reason : '.'}`, cls: 'bg-red-50 text-red-700 border border-red-200' },
+                cancelled: { text: '🚫 Request cancelled.', cls: 'bg-gray-50 text-gray-600 border border-gray-200' },
+            };
+
+            const m = config[req.status];
+            if (!m) return;
+            banner.className = `mt-4 mb-2 px-4 py-3 rounded-2xl text-sm font-semibold text-center ${m.cls}`;
+            banner.textContent = m.text;
+            banner.classList.remove('hidden');
+            if (cancelBtn) cancelBtn.classList.toggle('hidden', req.status !== 'pending');
+        }
+
+        window.cancelRoomServiceRequest = async () => {
+            if (!state.roomServiceRequest?.request_id) return;
+            if (!confirm('Cancel your room service request?')) return;
+            try {
+                await axios.delete(`${LAMBDA_URL}/room-service/request`, {
+                    data: { tenant_id: state.tenantId, request_id: state.roomServiceRequest.request_id }
+                });
+                state.roomServiceRequest = null;
+                clearInterval(state.roomServicePollingIntervalId);
+                state.roomServicePollingIntervalId = null;
+                updateRoomServiceSubmitBar();
+                closeRsCart();
+                renderRoomServiceStatusBanner();
+            } catch (err) {
+                console.error('[Room Service] Cancel failed:', err);
+                alert('Failed to cancel request.');
+            }
+        };
+
+        // ─────────────────────────────────────────────────────────────
 
         // Start
         init();
