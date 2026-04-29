@@ -342,6 +342,20 @@
                         Pay Online
                     </button>
                 </div>
+                <!-- Shown only when gh_payment_mode === "both" for room service -->
+                <div id="rs-payment-options" class="hidden flex flex-col gap-2">
+                    <button type="button" onclick="submitOrder('cod')"
+                        class="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-base shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        💵 Cash on Delivery
+                    </button>
+                    <button type="button" id="rs-pay-online-btn" onclick="initiateRoomServicePayment()"
+                        class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-base shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        Pay Online
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -503,6 +517,39 @@
         </div>
     </div>
 
+    <!-- Room Service Orders Overlay -->
+    <div id="rs-orders-overlay"
+        class="fixed inset-0 z-[90] hidden flex-col bg-gray-50">
+        <div class="bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between shadow-sm">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Room Orders</h2>
+                <p id="rs-orders-subtitle" class="text-xs text-gray-400 mt-0.5"></p>
+            </div>
+            <button onclick="closeRsOrdersScreen()"
+                class="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="rs-orders-list" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="text-center py-16">
+                <div class="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p class="text-gray-400 mt-3 text-sm">Loading orders...</p>
+            </div>
+        </div>
+        <div class="bg-white border-t border-gray-100 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+            <button onclick="placeNewRsOrder()"
+                class="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-base shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Place New Order
+            </button>
+        </div>
+    </div>
+
     <!-- Pickup Identity Gate (Full-page overlay for pickup QR) -->
     <div id="pickup-gate-overlay"
         class="fixed inset-0 z-[95] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -580,6 +627,9 @@
             deliveryOrders: [],             // all active delivery orders for this phone
             deliveryPollingIntervalId: null,
             showingDeliveryOrdersScreen: false,
+            rsOrders: [],                   // room service order history for this room
+            rsPollingIntervalId: null,
+            showingRsOrdersScreen: false,
             etaTimestamp: null,
             denialReason: null,
             countdownIntervalId: null,
@@ -655,7 +705,7 @@
         }
 
         // ... Configuration ... (Same as before)
-        const IS_LOCAL = false;
+        const IS_LOCAL = true;
         const PROD_LAMBDA_URL = "https://ydhettu7l6.execute-api.ap-south-1.amazonaws.com/production/api/guest/order/request";
         const LAMBDA_URL = IS_LOCAL ? 'http://localhost:3001/api/guest/lambda' : PROD_LAMBDA_URL;
 
@@ -1311,8 +1361,23 @@
             try {
                 // 1. Fetch Guest Settings (via Lambda/Sim)
                 // Appending path for Proxy: /settings
-                const settingsRes = await axios.get(`${LAMBDA_URL}/settings?tenant_id=${state.tenantId}`);
+                // Pass room_id when in room-service mode so the backend resolves gh_payment_mode per-GH
+                const roomId = urlParams.get('room_id');
+                const settingsUrl = roomId
+                    ? `${LAMBDA_URL}/settings?tenant_id=${state.tenantId}&room_id=${encodeURIComponent(roomId)}`
+                    : `${LAMBDA_URL}/settings?tenant_id=${state.tenantId}`;
+                const settingsRes = await axios.get(settingsUrl);
                 state.settings = settingsRes.data.settings;
+                console.log('[DK] Settings loaded:', {
+                    hallId: state.hallId,
+                    tableId: state.tableId,
+                    room_id_param: roomId,
+                    razorpay_enabled: state.settings.razorpay_enabled,
+                    razorpay_key_id: state.settings.razorpay_key_id ? '(set)' : '(missing)',
+                    gh_payment_mode: state.settings.gh_payment_mode,
+                    delivery_payment_mode: state.settings.delivery_payment_mode,
+                    delivery_enabled: state.settings.delivery_enabled,
+                });
                 renderHeader();
 
                 if (!isStoreTakingOrders()) {
@@ -1362,6 +1427,12 @@
                     await checkTableStatus(true);
                     // Poll status every 5s
                     setInterval(() => checkTableStatus(false), 5000);
+                    // For room service: also load order history and poll it
+                    if (state.hallId === 'ROOM_SERVICE') {
+                        await loadRoomServiceOrders(true);
+                        if (state.rsPollingIntervalId) clearInterval(state.rsPollingIntervalId);
+                        state.rsPollingIntervalId = setInterval(() => loadRoomServiceOrders(false), 10000);
+                    }
                 } else {
                     // Update cart summary even if no table status check
                     updateCartSummaryTop();
@@ -1435,7 +1506,11 @@
                     // Check if pending request was approved (had pending before, now it's gone and order exists)
                     const wasPendingApproved = prevPendingId && !hasPendingRequestInResponse && hasActiveOrderItems;
 
-                    if (hasPendingRequestInResponse) {
+                    // Room service: orders are independent — skip pending-request cart pre-fill
+                    if (hasPendingRequestInResponse && state.hallId === 'ROOM_SERVICE') {
+                        // Just refresh order history list; don't pre-fill cart or set pendingRequest
+                        loadRoomServiceOrders(false);
+                    } else if (hasPendingRequestInResponse) {
                         // There's still a pending request
                         const newPendingId = res.data.active_order.pending_request.request_id;
                         const isNewPendingRequest = !state.pendingRequest || state.pendingRequest.request_id !== newPendingId;
@@ -1829,6 +1904,11 @@
 
         window.editPendingRequest = () => {
             if (!state.pendingRequest) return;
+            const _ps = state.pendingRequest.payment_status;
+            if (_ps === "authorized" || _ps === "paid") {
+                alert('Your order has been paid and cannot be changed. Please contact staff.');
+                return;
+            }
 
             // Set flag to prevent polling from overwriting edits
             state.isEditingPendingRequest = true;
@@ -2451,7 +2531,9 @@
             markUserActive();
             // Enable edit mode when opening cart modal (allows editing from modal)
             // Also enable if opening from status banner "View" button
-            if (state.pendingRequest && (fromStatusBanner || !state.isEditingPendingRequest)) {
+            const _prPs = state.pendingRequest?.payment_status;
+            const _prIsPaid = _prPs === "authorized" || _prPs === "paid";
+            if (state.pendingRequest && !_prIsPaid && (fromStatusBanner || !state.isEditingPendingRequest)) {
                 state.isEditingPendingRequest = true;
                 state.cartModifiedFromPending = false;
             }
@@ -2718,17 +2800,27 @@
             // Update submit button state based on new items (use cartTotal calculated here)
             const hasNewItems = cartTotal > 0;
             const canEdit = !state.pendingRequest || state.isEditingPendingRequest;
-            // Always reset the two-option panel so stale visibility can't bleed through renders
+            // Always reset both two-option panels so stale visibility can't bleed through renders
             const paymentOptionsEl = document.getElementById('delivery-payment-options');
             const payOnlineBtn = document.getElementById('delivery-pay-online-btn');
             if (paymentOptionsEl) paymentOptionsEl.style.display = 'none';
+            const rsPaymentOptionsEl = document.getElementById('rs-payment-options');
+            const rsPayOnlineBtn = document.getElementById('rs-pay-online-btn');
+            if (rsPaymentOptionsEl) rsPaymentOptionsEl.style.display = 'none';
             // Task 30: Block add-items for paid pickup orders
             const isPickupPaid = state.isPickupMode && state.existingOrder && state.existingOrder.payment_status === "paid";
+            const _pendingPs = state.pendingRequest?.payment_status;
+            const _pendingIsPaid = _pendingPs === "authorized" || _pendingPs === "paid";
             if (isPickupPaid && hasNewItems) {
                 submitBtn.style.display = 'block';
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 submitBtn.innerHTML = '<span>💳 Order paid online — cannot add items</span>';
+            } else if (_pendingIsPaid) {
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                submitBtn.innerHTML = '<span>💳 Payment received — awaiting staff approval</span>';
             } else if (!hasNewItems) {
                 // Hide button when no new items
                 submitBtn.style.display = 'none';
@@ -2787,6 +2879,28 @@
                                     submitBtn.setAttribute('onclick', 'submitOrder("cod")');
                                     submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>🚚 Place Delivery Order</span></span>`;
                                 }
+                            }
+                        } else if (state.hallId === 'ROOM_SERVICE') {
+                            const ghPaymentMode = state.settings.gh_payment_mode || 'postpaid';
+                            const hasRazorpay = state.settings.razorpay_enabled && state.settings.razorpay_key_id;
+                            const rsCartTotal = Object.values(state.cart).reduce((s, c) => s + ((c.price ?? c.item.price) * c.qty), 0);
+                            console.log('[DK] RS button decision:', { ghPaymentMode, hasRazorpay, razorpay_enabled: state.settings.razorpay_enabled, razorpay_key_id: !!state.settings.razorpay_key_id, rsCartTotal });
+
+                            if (ghPaymentMode === 'both' && hasRazorpay) {
+                                submitBtn.style.display = 'none';
+                                if (rsPaymentOptionsEl) {
+                                    rsPaymentOptionsEl.style.display = 'flex';
+                                    rsPaymentOptionsEl.querySelectorAll('button').forEach(b => b.disabled = false);
+                                    if (rsPayOnlineBtn) rsPayOnlineBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Pay Online &#8377;${Math.round(rsCartTotal)}`;
+                                }
+                            } else if (ghPaymentMode === 'prepaid' && hasRazorpay) {
+                                submitBtn.style.display = 'block';
+                                submitBtn.setAttribute('onclick', 'initiateRoomServicePayment()');
+                                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span>Pay for Room Service &#8377;${Math.round(rsCartTotal)}</span></span>`;
+                            } else {
+                                submitBtn.style.display = 'block';
+                                submitBtn.setAttribute('onclick', 'submitOrder()');
+                                submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><span>Send Request</span><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></span>`;
                             }
                         } else {
                             submitBtn.style.display = 'block';
@@ -3384,6 +3498,227 @@
         window.initiateDeliveryPayment = initiateDeliveryPayment;
         window.openDeliveryOrdersScreen = openDeliveryOrdersScreen;
 
+        // ── Room service pre-payment functions ──────────────────────────────
+
+        async function initiateRoomServicePayment() {
+            // COD button is first-child; pay-online is the rs-pay-online-btn
+            const payOnlineBtn = document.getElementById('rs-pay-online-btn');
+            const activeBtn = payOnlineBtn || document.getElementById('place-order-btn');
+            if (!activeBtn || activeBtn.disabled) return;
+
+            if (Object.keys(state.cart).length === 0) { alert('Cart is empty'); return; }
+            if (!state.guestName || !state.guestPhone) {
+                alert('Please enter your name and phone number before paying.');
+                return;
+            }
+
+            activeBtn.disabled = true;
+            activeBtn.innerHTML = `<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Opening payment…`;
+
+            const items = Object.values(state.cart).map(c => ({
+                item_code: c.item.item_code,
+                name: c.item.name,
+                price: c.price ?? c.item.price,
+                quantity: c.qty,
+                category: c.item.category,
+                is_cgst_applicable: c.item.is_cgst_applicable,
+                is_sgst_applicable: c.item.is_sgst_applicable,
+                group_id: c.item.group_id,
+                group: c.item.group,
+                ...(c.portion ? { portion: c.portion } : {}),
+            }));
+
+            try {
+                await loadRazorpayScript();
+
+                const initiateRes = await axios.post(`${PAYMENT_BASE}/api/guest/payment/room-service/initiate`, {
+                    tenant_id: state.tenantId,
+                    items,
+                    guest_name: state.guestName,
+                    guest_phone: state.guestPhone,
+                    table_id: state.tableId,
+                    hall_id: state.hallId,
+                    ...(state.floor != null && { floor: state.floor }),
+                    ...(state.guestNotes ? { guest_notes: state.guestNotes } : {}),
+                });
+
+                const { request_id, razorpay_order_id, amount, key_id, bill_preview } = initiateRes.data;
+
+                const options = {
+                    key: key_id,
+                    amount,
+                    currency: 'INR',
+                    order_id: razorpay_order_id,
+                    name: state.settings.restaurant_name || 'Restaurant',
+                    description: 'Room Service Payment',
+                    prefill: { contact: state.guestPhone || '', name: state.guestName || '' },
+                    theme: { color: '#4f46e5' },
+                    handler: async function (response) {
+                        await handleRoomServicePaymentSuccess(response, request_id);
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            activeBtn.disabled = false;
+                            const total = bill_preview?.total || (amount / 100);
+                            activeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Pay Online ₹${Math.round(total)}`;
+                        }
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+
+            } catch (err) {
+                console.error('[RS_RZP] initiate error:', err);
+                activeBtn.disabled = false;
+                activeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Pay Online`;
+                const msg = err?.response?.data?.error || 'Could not start payment. Please try again.';
+                alert(msg);
+            }
+        }
+
+        async function handleRoomServicePaymentSuccess(response, request_id) {
+            const payOnlineBtn = document.getElementById('rs-pay-online-btn');
+            const activeBtn = payOnlineBtn || document.getElementById('place-order-btn');
+            if (activeBtn) { activeBtn.disabled = true; activeBtn.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Confirming payment…'; }
+
+            try {
+                await axios.post(`${PAYMENT_BASE}/api/guest/payment/room-service/confirm`, {
+                    tenant_id: state.tenantId,
+                    request_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                });
+
+                state.cart = {};
+                updateMenuQuantitiesOnly();
+                closeCart();
+                showRoomServiceOrderSuccess(false);
+
+            } catch (err) {
+                console.error('[RS_RZP] confirm error:', err);
+                state.cart = {};
+                updateMenuQuantitiesOnly();
+                closeCart();
+                showRoomServiceOrderSuccess(true);
+            }
+        }
+
+        function showRoomServiceOrderSuccess(webhookFallback = false) {
+            const existing = document.getElementById('rs-success-banner');
+            if (existing) existing.remove();
+
+            const banner = document.createElement('div');
+            banner.id = 'rs-success-banner';
+            banner.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4';
+            banner.innerHTML = `
+                <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🛎️</div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Order Received!</h2>
+                    <p class="text-gray-500 text-sm mb-2">
+                        ${webhookFallback
+                            ? 'Your payment was received. Your order is being confirmed — please wait.'
+                            : 'Your room service order has been received and is awaiting confirmation.'}
+                    </p>
+                    <p class="text-xs text-gray-400 mb-6">We'll prepare your order once the staff confirms it.</p>
+                    <button onclick="document.getElementById('rs-success-banner').remove(); openRsOrdersScreen();" class="w-full py-3 rounded-2xl bg-indigo-600 text-white font-bold text-sm">
+                        View My Orders
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+        }
+
+        async function loadRoomServiceOrders(showScreenIfOrders = false) {
+            if (!state.tenantId || !state.tableId) return;
+            try {
+                const res = await axios.get(`${LAMBDA_URL}/room-service/orders`, {
+                    params: { tenant_id: state.tenantId, room_id: state.tableId }
+                });
+                if (!res.data.success) return;
+                state.rsOrders = res.data.orders || [];
+                if (state.showingRsOrdersScreen) {
+                    renderRsOrdersList();
+                } else if (showScreenIfOrders && state.rsOrders.length > 0) {
+                    openRsOrdersScreen();
+                }
+            } catch (e) {
+                console.warn('[RS_ORDERS] load error:', e.message);
+            }
+        }
+
+        function openRsOrdersScreen() {
+            state.showingRsOrdersScreen = true;
+            const overlay = document.getElementById('rs-orders-overlay');
+            if (!overlay) return;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            const subtitle = document.getElementById('rs-orders-subtitle');
+            if (subtitle) subtitle.textContent = state.guestName ? `Room: ${state.guestName}` : '';
+            renderRsOrdersList();
+        }
+
+        window.closeRsOrdersScreen = () => {
+            state.showingRsOrdersScreen = false;
+            const overlay = document.getElementById('rs-orders-overlay');
+            if (!overlay) return;
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        };
+
+        window.placeNewRsOrder = () => {
+            closeRsOrdersScreen();
+        };
+
+        function renderRsOrdersList() {
+            const container = document.getElementById('rs-orders-list');
+            if (!container) return;
+            const all = state.rsOrders || [];
+            if (all.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 px-4">
+                        <div class="text-5xl mb-4">🛎️</div>
+                        <p class="text-gray-600 font-semibold">No orders yet</p>
+                        <p class="text-gray-400 text-sm mt-1">Browse the menu and place your first order.</p>
+                    </div>`;
+                return;
+            }
+            const statusConfig = {
+                awaiting_payment: { label: 'Awaiting Payment',    bg: 'bg-yellow-100', text: 'text-yellow-800', emoji: '⏳' },
+                authorized:       { label: 'Payment Received',    bg: 'bg-blue-100',   text: 'text-blue-800',   emoji: '💳' },
+                paid:             { label: 'Payment Received',    bg: 'bg-blue-100',   text: 'text-blue-800',   emoji: '💳' },
+                pending:          { label: 'Awaiting Approval',   bg: 'bg-orange-100', text: 'text-orange-800', emoji: '🕐' },
+                approved:         { label: 'Being Prepared',      bg: 'bg-green-100',  text: 'text-green-800',  emoji: '✅' },
+                denied:           { label: 'Declined',            bg: 'bg-red-50',     text: 'text-red-600',    emoji: '✕' },
+            };
+            container.innerHTML = all.map(r => {
+                const resolvedStatus = r.payment_status === 'authorized' || r.payment_status === 'paid' ? r.payment_status : r.status;
+                const sc = statusConfig[resolvedStatus] || { label: resolvedStatus, bg: 'bg-gray-100', text: 'text-gray-600', emoji: '📦' };
+                const total = r.bill_preview?.total ?? r.items?.reduce((s, i) => s + ((i.price || 0) * (i.quantity || 0)), 0) ?? 0;
+                const itemsSummary = (r.items || []).map(i => `${i.name} ×${i.quantity}`).join(', ');
+                const timeAgo = formatTimeAgo(r.requested_at);
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                ${r.request_number ? `<p class="text-xs text-gray-400 mb-0.5">Request #${r.request_number}</p>` : ''}
+                                <p class="text-sm text-gray-500">${timeAgo}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.text}">${sc.emoji} ${sc.label}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 mb-2 line-clamp-2">${itemsSummary}</p>
+                        <div class="flex items-center justify-between">
+                            <p class="font-bold text-gray-900">₹${Math.round(total)}</p>
+                            ${r.denial_reason ? `<p class="text-xs text-red-500">${r.denial_reason}</p>` : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        window.openRsOrdersScreen = openRsOrdersScreen;
+        window.initiateRoomServicePayment = initiateRoomServicePayment;
+
         // (Delivery address edit helpers removed — address editing is not supported for delivery orders.
         //  Cancellation and viewing are handled via the My Delivery Orders screen.)
 
@@ -3555,6 +3890,10 @@
 
             // Prevent submission if pending request exists but not in edit mode
             if (state.pendingRequest && !state.isEditingPendingRequest) {
+                const _ps = state.pendingRequest.payment_status;
+                if (_ps === "authorized" || _ps === "paid") {
+                    return alert('Your order has been paid and cannot be changed. Please contact staff.');
+                }
                 return alert('Please use "View / Edit" button to modify your pending order');
             }
 
@@ -3563,7 +3902,9 @@
             updateCartBarUI();
 
             // In "both" mode the COD button is a separate element; show loading on whichever was clicked
-            const codBtn = document.getElementById('delivery-payment-options')?.querySelector('button:first-child');
+            const deliveryCodBtn = document.getElementById('delivery-payment-options')?.querySelector('button:first-child');
+            const rsCodBtn = document.getElementById('rs-payment-options')?.querySelector('button:first-child');
+            const codBtn = deliveryCodBtn || rsCodBtn;
             const activeBtn = (paymentType === 'cod' && codBtn) ? codBtn : btn;
             activeBtn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></span><span>Placing order...</span></span>';
             activeBtn.disabled = true;
@@ -3735,6 +4076,9 @@
                         showDeliveryOrderSuccess(false);
                     } else if (state.isPickupMode) {
                         checkPickupStatus(true);
+                    } else if (state.hallId === 'ROOM_SERVICE') {
+                        await loadRoomServiceOrders(false);
+                        showRoomServiceOrderSuccess(false);
                     } else {
                         checkTableStatus(true);
                     }
