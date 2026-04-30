@@ -50,7 +50,7 @@ export const handler = async (event) => {
   // 4. GET Requests
   if (method === 'GET') {
       // Check if it's a backend endpoint we need to proxy
-      // We proxy: Settings, Table Status, Request Status, Pickup Status
+      // We proxy: Settings, Table Status, Request Status, Pickup Status, Order History
       const isBackendEndpoint = path && (
           path.includes('/request/status') ||
           path.includes('/settings') ||
@@ -58,7 +58,8 @@ export const handler = async (event) => {
           path.includes('/pickup/status') ||
           path.includes('/pickup/order') ||
           path.includes('/room-service/menu') ||
-          path.includes('/room-service/request/status')
+          path.includes('/room-service/request/status') ||
+          path.includes('/my-orders')
       );
 
       if (isBackendEndpoint) {
@@ -150,6 +151,10 @@ async function proxyToBackend(method, path, body, queryParams, corsHeaders) {
       // Handle request status endpoint
       else if (normalizedPath.includes('/request/status')) {
           normalizedPath = '/api/guest/request/status';
+      }
+      // Handle unified order history endpoint
+      else if (normalizedPath.includes('/my-orders')) {
+          normalizedPath = '/api/guest/my-orders';
       }
       // Handle order request submission (POST) - only for POST method
       else if (method === 'POST' && normalizedPath.includes('/order/request') && !normalizedPath.includes('/settings') && !normalizedPath.includes('/status')) {
